@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD to PDF - LevTolstoy</title>
+    <meta name="description" content="Markdown yazın, PDF olarak indirin">
+
+    <meta name="description" content="Markdown yazın, PDF olarak indirin">
+
+    <!-- Highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- KaTeX for Math -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body class="min-h-screen bg-slate-900 text-slate-100 font-sans">
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 backdrop-blur-sm bg-slate-900/80 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h1
+                        class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        LevTolstoy
+                    </h1>
+                </a>
+
+                <!-- Navigation -->
+                <nav class="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
+                    <a href="/" class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+                        data-i18n="nav.converter">
+                        Metinleştirici
+                    </a>
+                    <a href="/md-to-pdf"
+                        class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all active"
+                        data-i18n="nav.editor">
+                        MD to PDF
+                    </a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Language Switcher -->
+                <div class="flex items-center bg-slate-800 rounded-lg p-1">
+                    <button id="lang-tr"
+                        class="lang-btn px-3 py-1.5 rounded-md text-sm font-medium transition-all active">
+                        TR
+                    </button>
+                    <button id="lang-en" class="lang-btn px-3 py-1.5 rounded-md text-sm font-medium transition-all">
+                        EN
+                    </button>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+                    <svg class="w-5 h-5 sun-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <svg class="w-5 h-5 moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Editor Section -->
+        <section class="max-w-7xl mx-auto">
+            <!-- Action Bar -->
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-slate-200" data-i18n="editor.title">MD to PDF</h2>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button id="copy-btn"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <span data-i18n="actions.copy">Kopyala</span>
+                    </button>
+                    <button id="download-md-btn"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span data-i18n="actions.downloadMd">.md</span>
+                    </button>
+                    <button id="download-pdf-btn"
+                        class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <span data-i18n="actions.downloadPdf">.pdf</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Panels -->
+            <div id="content-panels" class="grid gap-4" style="grid-template-columns: 1fr 1fr;">
+                <!-- Markdown Panel -->
+                <div id="markdown-panel" class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50 flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-400">Markdown</span>
+                        <span id="char-count" class="text-xs text-slate-500">0 karakter</span>
+                    </div>
+                    <textarea id="markdown-editor"
+                        class="w-full h-[600px] p-4 bg-transparent text-slate-200 font-mono text-sm resize-none focus:outline-none"
+                        placeholder="# Başlık
+
+Markdown içeriğinizi buraya yazın...
+
+## Alt Başlık
+
+- Liste öğesi 1
+- Liste öğesi 2
+
+**Kalın metin** ve *italik metin*
+
+```javascript
+console.log('Kod bloğu');
+```"></textarea>
+                </div>
+
+                <!-- Preview Panel -->
+                <div id="preview-panel" class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50">
+                        <span class="text-sm font-medium text-slate-400" data-i18n="tabs.preview">Önizleme</span>
+                    </div>
+                    <div id="preview-content"
+                        class="prose prose-invert prose-slate max-w-none p-6 h-[600px] overflow-auto">
+                        <!-- Rendered markdown will appear here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Scripts -->
+    <script src="/js/i18n.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/preview.js"></script>
+    <script>
+        // Editor page specific logic
+
+        // Toast Notification Helper
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' : ''}
+              ${type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' : ''}
+              ${type === 'info' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' : ''}
+            </svg>
+            <span>${message}</span>
+          `;
+
+            container.appendChild(toast);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        window.showToast = showToast;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const editor = document.getElementById('markdown-editor');
+            const previewContent = document.getElementById('preview-content');
+
+            // Theme
+            const saved = localStorage.getItem('doc2md-theme');
+            if (saved === 'light') {
+                document.documentElement.classList.add('light');
+                document.querySelector('.sun-icon')?.classList.remove('hidden');
+                document.querySelector('.moon-icon')?.classList.add('hidden');
+            }
+
+            document.getElementById('theme-toggle')?.addEventListener('click', () => {
+                document.documentElement.classList.toggle('light');
+                const isLight = document.documentElement.classList.contains('light');
+                document.querySelector('.sun-icon')?.classList.toggle('hidden', !isLight);
+                document.querySelector('.moon-icon')?.classList.toggle('hidden', isLight);
+                localStorage.setItem('doc2md-theme', isLight ? 'light' : 'dark');
+            });
+
+            // Editor sync with preview
+            editor.addEventListener('input', (e) => {
+                const markdown = e.target.value;
+                window.preview.updatePreview(markdown);
+                window.preview.updateCharCount(markdown);
+            });
+
+            // Initial preview update
+            window.preview.updatePreview(editor.value);
+            window.preview.updateCharCount(editor.value);
+
+            // Synchronized scrolling (optimized for smoothness)
+            let isScrolling = false;
+
+            editor.addEventListener('scroll', () => {
+                if (isScrolling) return;
+                isScrolling = true;
+
+                const scrollPercentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+                previewContent.scrollTop = scrollPercentage * (previewContent.scrollHeight - previewContent.clientHeight);
+
+                setTimeout(() => isScrolling = false, 50);
+            });
+
+            previewContent.addEventListener('scroll', () => {
+                if (isScrolling) return;
+                isScrolling = true;
+
+                const scrollPercentage = previewContent.scrollTop / (previewContent.scrollHeight - previewContent.clientHeight);
+                editor.scrollTop = scrollPercentage * (editor.scrollHeight - editor.clientHeight);
+
+                setTimeout(() => isScrolling = false, 50);
+            });
+
+            // Copy button
+            document.getElementById('copy-btn')?.addEventListener('click', () => {
+                window.preview.copyToClipboard(editor.value);
+            });
+
+            // Download MD button
+            document.getElementById('download-md-btn')?.addEventListener('click', () => {
+                window.preview.downloadMarkdown(editor.value, 'document.md');
+            });
+
+            // Download PDF button
+            document.getElementById('download-pdf-btn')?.addEventListener('click', async () => {
+                await window.preview.downloadPdf(editor.value, 'document.pdf');
+            });
+        });
+    </script>
+</body>
+
+</html>

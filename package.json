@@ -1,0 +1,36 @@
+{
+  "name": "levtolstoy",
+  "version": "1.0.0",
+  "description": "Döküman → Markdown Dönüştürücü (Gemini AI)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "auth": "node server/auth.js",
+    "init:tailwind": "tailwindcss init",
+    "build": "npm run build:css",
+    "build:css": "tailwindcss -i ./src/css/input.css -o ./public/css/styles.css",
+    "watch:css": "tailwindcss -i ./src/css/input.css -o ./public/css/styles.css --watch"
+  },
+  "keywords": [
+    "markdown",
+    "gemini",
+    "converter",
+    "pdf",
+    "pptx"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "googleapis": "^144.0.0",
+    "katex": "^0.16.27",
+    "md-to-pdf": "^5.2.5",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
