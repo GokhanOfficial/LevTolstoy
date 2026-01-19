@@ -205,8 +205,6 @@ async function generatePdf(markdown) {
       ],
       body_class: ['pdf-body'],
       launch_options: launchOptions,
-      // Disable file-based highlight style (CSS is inlined in PDF_CSS)
-      highlight_style: false,
       pdf_options: {
         format: 'A4',
         margin: {
@@ -219,13 +217,7 @@ async function generatePdf(markdown) {
       },
       marked_options: {
         breaks: true,
-        gfm: true,
-        // Disable internal highlighting to prevent style injection attempts
-        highlight: (code, lang) => {
-          const hljs = require('highlight.js');
-          const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-          return hljs.highlight(code, { language }).value;
-        }
+        gfm: true
       }
     }
   );
