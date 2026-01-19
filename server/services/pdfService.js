@@ -158,6 +158,38 @@ async function generatePdf(markdown) {
   // Pre-process markdown (SSR Math + Escaping)
   const safeMarkdown = preprocessMarkdown(markdown);
 
+  // Serverless environment detection and chromium setup
+  let launchOptions = {
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu'
+    ]
+  };
+
+  // Check if running in serverless environment (Vercel, AWS Lambda, etc.)
+  const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+  if (isServerless) {
+    try {
+      const chromium = require('@sparticuz/chromium');
+      const executablePath = await chromium.executablePath();
+
+      launchOptions = {
+        ...launchOptions,
+        executablePath,
+        headless: chromium.headless,
+        args: chromium.args
+      };
+
+      console.log('📦 Using @sparticuz/chromium for serverless PDF generation');
+    } catch (e) {
+      console.warn('⚠️ @sparticuz/chromium not available, falling back to default puppeteer');
+    }
+  }
+
   const result = await mdToPdf(
     { content: safeMarkdown },
     {
@@ -168,15 +200,7 @@ async function generatePdf(markdown) {
         'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'
       ],
       body_class: ['pdf-body'],
-      launch_options: {
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accel',
-          '--disable-gpu'
-        ]
-      },
+      launch_options: launchOptions,
       pdf_options: {
         format: 'A4',
         margin: {
