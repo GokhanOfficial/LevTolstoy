@@ -1,4 +1,3 @@
-const { marked } = require('marked');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
 const config = require('../config');
@@ -140,6 +139,9 @@ function preprocessMarkdown(markdown) {
  * @returns {Promise<Buffer>} - PDF buffer
  */
 async function generatePdf(markdown) {
+  // Dynamic import for ESM module
+  const { marked } = await import('marked');
+
   // Pre-process markdown (SSR Math + Escaping)
   const safeMarkdown = preprocessMarkdown(markdown);
 
