@@ -197,10 +197,13 @@ async function generatePdf(markdown) {
       // No client-side scripts needed for math anymore
       script: [],
       stylesheet: [
-        'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'
+        'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
+        'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
       ],
       body_class: ['pdf-body'],
       launch_options: launchOptions,
+      // Disable automatic highlight.js style inclusion (causes ENOENT on serverless)
+      highlight_style: false,
       pdf_options: {
         format: 'A4',
         margin: {
