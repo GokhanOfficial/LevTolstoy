@@ -13,6 +13,7 @@ module.exports = {
   googleDrive: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    pdfFolderId: process.env.GOOGLE_DRIVE_PDF_FOLDER_ID
+    pdfFolderId: process.env.GOOGLE_DRIVE_PDF_FOLDER_ID,
+    mdFolderId: process.env.GOOGLE_DRIVE_MD_FOLDER_ID
   }
 };

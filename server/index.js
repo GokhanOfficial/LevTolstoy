@@ -5,6 +5,9 @@ const multer = require('multer');
 const config = require('./config');
 const convertRoutes = require('./routes/convert');
 const pdfRoutes = require('./routes/pdf');
+const downloadRoutes = require('./routes/download');
+const saveRoutes = require('./routes/save');
+const generateTitleRoutes = require('./routes/generate-title');
 
 const app = express();
 
@@ -23,6 +26,9 @@ const upload = multer({
 // Routes - support multiple files (up to 10)
 app.use('/api/convert', upload.array('files', 10), convertRoutes);
 app.use('/api/pdf', pdfRoutes);
+app.use('/api/download', downloadRoutes);
+app.use('/api/save', saveRoutes);
+app.use('/api/generate-title', generateTitleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

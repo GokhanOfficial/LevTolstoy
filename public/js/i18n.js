@@ -49,12 +49,14 @@ const translations = {
         // Toast messages
         'toast.copied': 'Panoya kopyalandı!',
         'toast.downloadStarted': 'İndirme başladı',
+        'toast.generatingFilename': 'Dosya adı üretiliyor...',
         'toast.pdfGenerating': 'PDF oluşturuluyor...',
         'toast.pdfReady': 'PDF hazır!',
         'toast.conversionComplete': 'Dönüştürme tamamlandı!',
         'toast.conversionFailed': 'Dönüştürme başarısız',
         'toast.noFiles': 'Lütfen önce dosya seçin',
         'toast.unsupportedFormat': 'Desteklenmeyen dosya formatı',
+        'toast.emptyContent': 'İçerik boş',
 
         // Errors
         'errors.noFile': 'Dosya yüklenmedi',
@@ -111,11 +113,14 @@ const translations = {
         // Toast messages
         'toast.copied': 'Copied to clipboard!',
         'toast.downloadStarted': 'Download started',
+        'toast.generatingFilename': 'Generating filename...',
+        'toast.pdfGenerating': 'Generating PDF...',
         'toast.pdfReady': 'PDF ready',
         'toast.conversionComplete': 'Conversion complete!',
         'toast.conversionFailed': 'Conversion failed',
         'toast.noFiles': 'Please select files first',
         'toast.unsupportedFormat': 'Unsupported file format',
+        'toast.emptyContent': 'Content is empty',
 
         // Errors
         'errors.noFile': 'No file uploaded',

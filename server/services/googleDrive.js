@@ -126,7 +126,93 @@ async function convertToPdf(fileBuffer, mimeType, googleMimeType) {
     }
 }
 
+/**
+ * Upload file to Google Drive
+ * @param {Buffer|string} content - File content (Buffer or string)
+ * @param {string} filename - File name
+ * @param {string} mimeType - MIME type
+ * @param {string} [folderId] - Optional folder ID
+ * @returns {Promise<{fileId: string, webViewLink: string}>}
+ */
+async function uploadFile(content, filename, mimeType, folderId) {
+    const drive = initializeDrive();
+
+    if (!drive) {
+        throw new Error('Google Drive yapılandırılmamış');
+    }
+
+    // Create file metadata
+    const fileMetadata = {
+        name: filename,
+        mimeType: mimeType
+    };
+
+    // Add to folder if specified
+    if (folderId) {
+        fileMetadata.parents = [folderId];
+    }
+
+    // Create readable stream
+    const { PassThrough } = require('stream');
+    const bufferStream = new PassThrough();
+
+    if (Buffer.isBuffer(content)) {
+        bufferStream.end(content);
+    } else {
+        bufferStream.end(Buffer.from(content));
+    }
+
+    // Upload file
+    const response = await drive.files.create({
+        requestBody: fileMetadata,
+        media: {
+            mimeType: mimeType,
+            body: bufferStream
+        },
+        fields: 'id,webViewLink'
+    });
+
+    return {
+        fileId: response.data.id,
+        webViewLink: response.data.webViewLink
+    };
+}
+
+/**
+ * Download file from Google Drive by fileId
+ * @param {string} fileId - Google Drive file ID
+ * @returns {Promise<{stream: ReadableStream, filename: string, mimeType: string}>}
+ */
+async function downloadFromDrive(fileId) {
+    const drive = initializeDrive();
+
+    if (!drive) {
+        throw new Error('Google Drive yapılandırılmamış');
+    }
+
+    // Get file metadata
+    const fileInfo = await drive.files.get({
+        fileId: fileId,
+        fields: 'name,mimeType'
+    });
+
+    // Get file content
+    const response = await drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+    }, { responseType: 'stream' });
+
+    return {
+        stream: response.data,
+        filename: fileInfo.data.name,
+        mimeType: fileInfo.data.mimeType
+    };
+}
+
 module.exports = {
     isConfigured,
-    convertToPdf
+    convertToPdf,
+    initializeDrive,
+    uploadFile,
+    downloadFromDrive
 };

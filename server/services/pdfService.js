@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
+const googleDriveService = require('./googleDrive'); // Import service
 
 const TOKEN_PATH = path.join(__dirname, '../.google-token.json');
 
@@ -201,125 +202,34 @@ async function generatePdf(markdown) {
 }
 
 /**
- * Get OAuth2 client from saved token
- * @returns {google.auth.OAuth2|null}
- */
-function getOAuth2Client() {
-  if (!config.googleDrive.clientId || !config.googleDrive.clientSecret) {
-    return null;
-  }
-
-  if (!fs.existsSync(TOKEN_PATH)) {
-    return null;
-  }
-
-  try {
-    const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-    const oauth2Client = new google.auth.OAuth2(
-      config.googleDrive.clientId,
-      config.googleDrive.clientSecret
-    );
-    oauth2Client.setCredentials(token);
-
-    // Token refresh handler
-    oauth2Client.on('tokens', (tokens) => {
-      const currentToken = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-      const updatedToken = { ...currentToken, ...tokens };
-      fs.writeFileSync(TOKEN_PATH, JSON.stringify(updatedToken, null, 2));
-    });
-
-    return oauth2Client;
-  } catch (err) {
-    console.error('OAuth2 client error:', err.message);
-    return null;
-  }
-}
-
-/**
  * Upload PDF to Google Drive and return public link
  * @param {Buffer} pdfBuffer - PDF content
- * @param {string} filename - File name
+ * @param {string} filename - File name (will be used as Drive filename)
  * @returns {Promise<{fileId: string, webViewLink: string, webContentLink: string}>}
  */
 async function uploadToDrive(pdfBuffer, filename) {
-  const oauth2Client = getOAuth2Client();
-
-  if (!oauth2Client) {
-    throw new Error('Google Drive yapılandırılmamış. "npm run auth" ile giriş yapın.');
+  // Use provided filename, fallback to UUID if not provided
+  let driveFilename;
+  if (filename && filename.trim()) {
+    // Ensure .pdf extension
+    driveFilename = filename.endsWith('.pdf') ? filename : `${filename.replace(/\.[^/.]+$/, '')}.pdf`;
+  } else {
+    // Fallback to UUID
+    const uuid = crypto.randomUUID();
+    driveFilename = `${uuid}.pdf`;
   }
 
-  const drive = google.drive({ version: 'v3', auth: oauth2Client });
   const folderId = config.googleDrive.pdfFolderId;
 
-  // Generate UUID-based filename
-  const uuid = crypto.randomUUID();
-  const driveFilename = `${uuid}.pdf`;
-
-  // Create file metadata
-  const fileMetadata = {
-    name: driveFilename,
-    mimeType: 'application/pdf'
-  };
-
-  // Add to folder if specified
-  if (folderId) {
-    fileMetadata.parents = [folderId];
-  }
-
-  // Create readable stream from buffer
-  const { PassThrough } = require('stream');
-  const bufferStream = new PassThrough();
-  bufferStream.end(pdfBuffer);
-
-  // Upload file
-  const response = await drive.files.create({
-    requestBody: fileMetadata,
-    media: {
-      mimeType: 'application/pdf',
-      body: bufferStream
-    },
-    fields: 'id,webViewLink,webContentLink'
-  });
-
-  const fileId = response.data.id;
-
-  // Don't make file publicly accessible - keep private and use proxy download
+  const result = await googleDriveService.uploadFile(
+    pdfBuffer,
+    driveFilename,
+    'application/pdf',
+    folderId
+  );
 
   return {
-    fileId: fileId
-  };
-}
-
-/**
- * Download file from Google Drive by fileId
- * @param {string} fileId - Google Drive file ID
- * @returns {Promise<{stream: ReadableStream, filename: string}>}
- */
-async function downloadFromDrive(fileId) {
-  const oauth2Client = getOAuth2Client();
-
-  if (!oauth2Client) {
-    throw new Error('Google Drive yapılandırılmamış');
-  }
-
-  const drive = google.drive({ version: 'v3', auth: oauth2Client });
-
-  // Get file metadata
-  const fileInfo = await drive.files.get({
-    fileId: fileId,
-    fields: 'name,mimeType'
-  });
-
-  // Get file content
-  const response = await drive.files.get({
-    fileId: fileId,
-    alt: 'media'
-  }, { responseType: 'stream' });
-
-  return {
-    stream: response.data,
-    filename: fileInfo.data.name,
-    mimeType: fileInfo.data.mimeType
+    fileId: result.fileId
   };
 }
 
@@ -327,15 +237,11 @@ async function downloadFromDrive(fileId) {
  * Check if Drive is configured
  */
 function isConfigured() {
-  if (!config.googleDrive.clientId || !config.googleDrive.clientSecret) {
-    return false;
-  }
-  return fs.existsSync(TOKEN_PATH);
+  return googleDriveService.isConfigured();
 }
 
 module.exports = {
   generatePdf,
   uploadToDrive,
-  downloadFromDrive,
   isConfigured
 };

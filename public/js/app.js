@@ -3,7 +3,21 @@
 // State
 let currentMarkdown = '';
 let currentFilename = '';
+let currentFileId = null;
+let generatedTitle = null; // Cache for generated title
+let titleMarkdownHash = ''; // Hash of markdown used for title generation
 window.currentView = 'split'; // 'markdown', 'preview', 'split' - default is split
+
+// Simple hash for comparing markdown content
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash.toString();
+}
 
 /**
  * Show toast notification
@@ -116,6 +130,7 @@ async function handleConvert() {
         if (result.success) {
             currentMarkdown = result.markdown;
             currentFilename = result.filename || (files.length === 1 ? files[0].name : 'combined');
+            currentFileId = result.fileId || null;
 
             // Update editor
             const editor = document.getElementById('markdown-editor');
@@ -195,15 +210,93 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Download MD button
-    document.getElementById('download-md-btn')?.addEventListener('click', () => {
+    document.getElementById('download-md-btn')?.addEventListener('click', async () => {
         const markdown = document.getElementById('markdown-editor')?.value || '';
-        window.preview.downloadMarkdown(markdown, currentFilename);
+
+        if (!markdown.trim()) {
+            showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
+            return;
+        }
+
+        try {
+            const currentHash = simpleHash(markdown);
+            let titleToUse = generatedTitle;
+
+            // Only generate title if not cached or content changed
+            if (!generatedTitle || titleMarkdownHash !== currentHash) {
+                showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
+
+                const titleResponse = await fetch('/api/generate-title', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown })
+                });
+                const titleResult = await titleResponse.json();
+                titleToUse = titleResult.title || 'document';
+
+                // Cache the result
+                generatedTitle = titleToUse;
+                titleMarkdownHash = currentHash;
+            }
+
+            // Save to Drive and download
+            const response = await fetch('/api/save/markdown', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ markdown, filename: `${titleToUse}.md` })
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.fileId) {
+                // Proxy download
+                window.location.href = `/api/download/${result.fileId}`;
+                showToast(window.i18n?.t('toast.downloadStarted') || 'Download started', 'success');
+            } else {
+                throw new Error(result.error || 'Kaydetme başarısız');
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            // Fallback to client-side download
+            window.preview.downloadMarkdown(markdown, currentFilename || 'document.md');
+        }
     });
 
     // Download PDF button
     document.getElementById('download-pdf-btn')?.addEventListener('click', async () => {
         const markdown = document.getElementById('markdown-editor')?.value || '';
-        await window.preview.downloadPdf(markdown, currentFilename);
+
+        if (!markdown.trim()) {
+            showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
+            return;
+        }
+
+        try {
+            const currentHash = simpleHash(markdown);
+            let titleToUse = generatedTitle;
+
+            // Only generate title if not cached or content changed
+            if (!generatedTitle || titleMarkdownHash !== currentHash) {
+                showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
+
+                const titleResponse = await fetch('/api/generate-title', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown })
+                });
+                const titleResult = await titleResponse.json();
+                titleToUse = titleResult.title || 'document';
+
+                // Cache the result
+                generatedTitle = titleToUse;
+                titleMarkdownHash = currentHash;
+            }
+
+            await window.preview.downloadPdf(markdown, `${titleToUse}.pdf`);
+        } catch (error) {
+            console.error('Title generation error:', error);
+            await window.preview.downloadPdf(markdown, currentFilename || 'document.pdf');
+        }
     });
 
     // Editor sync with preview

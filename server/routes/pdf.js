@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pdfService = require('../services/pdfService');
+const googleDriveService = require('../services/googleDrive'); // Import googleDriveService
 
 // POST /api/pdf - Generate PDF from markdown and upload to Drive
 router.post('/', async (req, res) => {
@@ -14,7 +15,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        if (!pdfService.isConfigured()) {
+        if (!googleDriveService.isConfigured()) { // Use googleDriveService for checks too
             return res.status(400).json({
                 error: 'Google Drive yapılandırılmamış. "npm run auth" ile giriş yapın.',
                 errorKey: 'errors.driveNotConfigured'
@@ -59,10 +60,11 @@ router.get('/download/:fileId', async (req, res) => {
             return res.status(400).send('File ID required');
         }
 
-        const { stream, filename, mimeType } = await pdfService.downloadFromDrive(fileId);
+        const { stream, filename, mimeType } = await googleDriveService.downloadFromDrive(fileId); // Use googleDriveService
 
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+        // Use RFC 5987 format for proper Unicode filename support
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 
         stream.pipe(res);
 

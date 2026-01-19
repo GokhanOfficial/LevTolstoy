@@ -24,6 +24,8 @@ router.post('/', async (req, res) => {
 
         console.log(`✅ Dönüştürme tamamlandı: ${files.length} dosya`);
 
+        // Send response with markdown only
+        // Drive upload will happen when user clicks download button
         res.json({
             success: true,
             filename: files.length === 1 ? files[0].originalname : `combined_${files.length}_files`,
