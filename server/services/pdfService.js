@@ -196,14 +196,14 @@ async function generatePdf(markdown) {
       css: PDF_CSS,
       // No client-side scripts needed for math anymore
       script: [],
+      // Explicitly define stylesheets
       stylesheet: [
-        'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
-        'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
+        'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'
       ],
       body_class: ['pdf-body'],
       launch_options: launchOptions,
-      // Disable automatic highlight.js style inclusion (causes ENOENT on serverless)
-      highlight_style: false,
+      // Use local highlight.js style (requires highlight.js package installed)
+      highlight_style: 'github',
       pdf_options: {
         format: 'A4',
         margin: {
@@ -216,7 +216,13 @@ async function generatePdf(markdown) {
       },
       marked_options: {
         breaks: true,
-        gfm: true
+        gfm: true,
+        // Disable internal highlighting to prevent style injection attempts
+        highlight: (code, lang) => {
+          const hljs = require('highlight.js');
+          const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+          return hljs.highlight(code, { language }).value;
+        }
       }
     }
   );
