@@ -8,8 +8,9 @@ const googleDriveService = require('./googleDrive'); // Import service
 
 const TOKEN_PATH = path.join(__dirname, '../.google-token.json');
 
-// PDF Generation CSS (same as frontend)
+// PDF Generation CSS (same as frontend + highlight.js github theme inlined)
 const PDF_CSS = `
+/* Base styles */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
@@ -19,8 +20,7 @@ body {
   margin: 0 auto;
 }
 pre {
-  background: #2d2d2d;
-  color: #f8f8f2;
+  background: #f6f8fa;
   border-radius: 4px;
   margin: 0.5em 0;
   padding: 1em;
@@ -90,6 +90,9 @@ hr {
   border-top: 1px solid #e2e8f0;
   margin: 2rem 0;
 }
+
+/* Highlight.js GitHub Theme (inlined for serverless compatibility) */
+.hljs{color:#24292e;background:#f6f8fa}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#d73a49}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#005cc5}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#032f62}.hljs-built_in,.hljs-symbol{color:#e36209}.hljs-code,.hljs-comment,.hljs-formula{color:#6a737d}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#22863a}.hljs-subst{color:#24292e}.hljs-section{color:#005cc5;font-weight:700}.hljs-bullet{color:#735c0f}.hljs-emphasis{color:#24292e;font-style:italic}.hljs-strong{color:#24292e;font-weight:700}.hljs-addition{color:#22863a;background-color:#f0fff4}.hljs-deletion{color:#b31d28;background-color:#ffeef0}
 `;
 
 /**
@@ -202,8 +205,8 @@ async function generatePdf(markdown) {
       ],
       body_class: ['pdf-body'],
       launch_options: launchOptions,
-      // Use local highlight.js style (requires highlight.js package installed)
-      highlight_style: 'github',
+      // Disable file-based highlight style (CSS is inlined in PDF_CSS)
+      highlight_style: false,
       pdf_options: {
         format: 'A4',
         margin: {
