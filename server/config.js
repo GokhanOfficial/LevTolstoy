@@ -8,6 +8,7 @@ module.exports = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
     baseUrl: process.env.GEMINI_BASE_URL || null, // Custom base URL (optional)
+    filenameModel: process.env.GEMINI_FILENAME_MODEL,
   },
 
   googleDrive: {

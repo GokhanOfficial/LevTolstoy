@@ -5,7 +5,7 @@ const geminiService = require('../services/gemini');
 // POST /api/generate-title - Generate a title from markdown content
 router.post('/', async (req, res) => {
     try {
-        const { markdown } = req.body;
+        const { markdown, model } = req.body;
 
         if (!markdown) {
             return res.status(400).json({
@@ -16,7 +16,7 @@ router.post('/', async (req, res) => {
 
         console.log('🏷️ Başlık üretiliyor...');
 
-        const title = await geminiService.generateFilename(markdown);
+        const title = await geminiService.generateFilename(markdown, model);
 
         res.json({
             success: true,

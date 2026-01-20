@@ -226,10 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!generatedTitle || titleMarkdownHash !== currentHash) {
                 showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
 
+                // Get currently selected model
+                const modelSelect = document.getElementById('model-select');
+                const selectedModel = modelSelect ? modelSelect.value : null;
+
                 const titleResponse = await fetch('/api/generate-title', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ markdown })
+                    body: JSON.stringify({ markdown, model: selectedModel })
                 });
                 const titleResult = await titleResponse.json();
                 titleToUse = titleResult.title || 'document';
@@ -279,10 +283,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!generatedTitle || titleMarkdownHash !== currentHash) {
                 showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
 
+                // Get currently selected model
+                const modelSelect = document.getElementById('model-select');
+                const selectedModel = modelSelect ? modelSelect.value : null;
+
                 const titleResponse = await fetch('/api/generate-title', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ markdown })
+                    body: JSON.stringify({ markdown, model: selectedModel })
                 });
                 const titleResult = await titleResponse.json();
                 titleToUse = titleResult.title || 'document';

@@ -113,13 +113,17 @@ async function convertMultipleToMarkdown(files, model = 'gemini-3-flash-preview'
  * @param {string} model - Gemini model name
  * @returns {Promise<string>} - Generated filename (without extension)
  */
-async function generateFilename(markdown, model = 'gemini-2.0-flash') {
+async function generateFilename(markdown, model = null) {
+    // 1. Env'de belirtilen model (öncelikli)
+    // 2. Dönüştürme için kullanılan model (parametreden gelen)
+    // 3. Fallback default
+    const modelToUse = config.gemini.filenameModel || model || 'gemini-2.5-flash';
     if (!config.gemini.apiKey) {
         throw new Error('GEMINI_API_KEY tanımlanmamış');
     }
 
     const baseUrl = getBaseUrl();
-    const endpoint = `${baseUrl}/models/${model}:generateContent?key=${config.gemini.apiKey}`;
+    const endpoint = `${baseUrl}/models/${modelToUse}:generateContent?key=${config.gemini.apiKey}`;
 
     // Use first 5000 chars of markdown for context (to keep request small)
     const contentSample = markdown.substring(0, 5000);
@@ -153,7 +157,7 @@ Dosya adı:`;
         }
     };
 
-    console.log(`🏷️ Dosya adı üretiliyor (Gemini)...`);
+    console.log(`🏷️ Dosya adı üretiliyor (Gemini) | Model: ${modelToUse}...`);
 
     const response = await fetch(endpoint, {
         method: 'POST',
