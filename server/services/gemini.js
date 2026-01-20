@@ -1,5 +1,5 @@
 const config = require('../config');
-const { getPromptForMimeType, getMultiFilePrompt } = require('../utils/prompts');
+const { getPromptForMimeType, getMultiFilePrompt, getFilenamePrompt, getSummarizePrompt } = require('../utils/prompts');
 
 // Default Gemini API base URL
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -128,17 +128,7 @@ async function generateFilename(markdown, model = null) {
     // Use first 5000 chars of markdown for context (to keep request small)
     const contentSample = markdown.substring(0, 5000);
 
-    const prompt = `Aşağıdaki markdown içeriği için kısa ve açıklayıcı bir dosya adı oluştur.
-
-Kurallar:
-- Sadece dosya adını yaz, uzantı ekleme
-- Türkçe karakterler kullanabilirsin (ş, ğ, ü, ö, ç, ı)
-- Maksimum 50 karakter
-- Boşluk yerine tire (-) kullan
-- Özel karakterler kullanma (sadece harf, rakam ve tire)
-- İçeriğin ana konusunu yansıtsın
-
-İçerik:
+    const prompt = `${getFilenamePrompt()}
 ${contentSample}
 
 Dosya adı:`;
@@ -213,27 +203,7 @@ async function summarizeText(text, model = 'gemini-2.5-flash') {
     const baseUrl = getBaseUrl();
     const endpoint = `${baseUrl}/models/${model}:generateContent?key=${config.gemini.apiKey}`;
 
-    const prompt = `Sen bir içerik özetleme uzmanısın. Sana verilen metni detaylı bir şekilde özetleyeceksin.
-
-## KURALLAR:
-
-1. **Başlık ve Alt Başlık Düzeni**: Başlık hiyerarşisine çok dikkat et. Ana konuları # ile, alt konuları ## ve ### ile belirt.
-
-2. **Maddeler Halinde Yaz**: Her önemli bilgiyi madde işaretleri ile listele. Okunabilirliği artır.
-
-3. **Önemsiz Detayları Kısalt**: Tekrar eden veya gereksiz bilgileri atlayabilirsin.
-
-4. **Önemli Detayları Atlama**: Kritik bilgiler, tanımlar, formüller, tarihler ve isimler mutlaka özette yer almalı.
-
-5. **Özet Tablosu**: Metnin sonunda önemli bilgileri bir tablo halinde özetle. Tabloda anahtar kavramlar ve kısa açıklamaları olsun.
-
-## FORMAT:
-
-- Markdown formatında yaz
-- Akademik ve profesyonel bir dil kullan
-- Metnin orijinal dilini koru (Türkçe → Türkçe, İngilizce → İngilizce)
-
-## METİN:
+    const prompt = `${getSummarizePrompt()}
 
 ${text}`;
 

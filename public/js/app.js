@@ -1,285 +1,104 @@
-// Main Application Logic
+// Main Application Entry Point
 
-// State
-let currentMarkdown = '';
-let currentFilename = '';
-let currentFileId = null;
-let generatedTitle = null; // Cache for generated title
-let titleMarkdownHash = ''; // Hash of markdown used for title generation
-window.currentView = 'split'; // 'markdown', 'preview', 'split' - default is split
+const App = {
+    // Global State
+    currentMarkdown: '',
+    currentFilename: '',
+    generatedTitle: null,
+    titleMarkdownHash: '',
+    currentView: 'split',
 
-// Simple hash for comparing markdown content
-function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return hash.toString();
-}
-
-/**
- * Show toast notification
- */
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' : ''}
-      ${type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' : ''}
-      ${type === 'info' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' : ''}
-    </svg>
-    <span>${message}</span>
-  `;
-
-    container.appendChild(toast);
-
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-// Make showToast globally available
-window.showToast = showToast;
-
-/**
- * Set current view mode
- */
-function setView(view) {
-    window.currentView = view;
-
-    const markdownPanel = document.getElementById('markdown-panel');
-    const previewPanel = document.getElementById('preview-panel');
-    const contentPanels = document.getElementById('content-panels');
-
-    if (!markdownPanel || !previewPanel || !contentPanels) return;
-
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.id === `tab-${view}`);
-    });
-
-    // Update panels
-    switch (view) {
-        case 'markdown':
-            markdownPanel.classList.remove('hidden');
-            previewPanel.classList.add('hidden');
-            contentPanels.style.gridTemplateColumns = '1fr';
-            contentPanels.classList.remove('split-view');
-            break;
-        case 'preview':
-            markdownPanel.classList.add('hidden');
-            previewPanel.classList.remove('hidden');
-            contentPanels.style.gridTemplateColumns = '1fr';
-            contentPanels.classList.remove('split-view');
-            break;
-        case 'split':
-            markdownPanel.classList.remove('hidden');
-            previewPanel.classList.remove('hidden');
-            contentPanels.style.gridTemplateColumns = '1fr 1fr';
-            contentPanels.classList.add('split-view');
-            break;
-    }
-}
-
-/**
- * Handle convert button click with task-based polling
- */
-async function handleConvert() {
-    const cachedFiles = window.fileUpload?.getCachedFiles() || [];
-
-    if (cachedFiles.length === 0) {
-        showToast(window.i18n?.t('toast.noFiles') || 'Please select files first', 'error');
-        return;
-    }
-
-    // Check if files are still uploading
-    if (window.fileUpload?.isUploading()) {
-        showToast('Dosyalar yükleniyor, lütfen bekleyin...', 'info');
-        return;
-    }
-
-    // Show progress section
-    const progressSection = document.getElementById('progress-section');
-    const resultSection = document.getElementById('result-section');
-    const convertBtn = document.getElementById('convert-btn');
-
-    convertBtn.disabled = true;
-    progressSection.classList.remove('hidden');
-
-    // Display file count
-    document.getElementById('progress-filename').textContent =
-        cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
-
-    const progressBar = document.getElementById('progress-bar');
-
-    try {
-        // Update all file statuses
-        cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'converting'));
-
-        // Get selected model
-        const modelSelect = document.getElementById('model-select');
-        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
-
-        // Start conversion task
-        const startResult = await window.api.startConversion(cachedFiles, selectedModel);
-
-        if (!startResult.success) {
-            throw new Error(startResult.error);
+    init() {
+        // Initialize Core Modules
+        if (window.ThemeManager) {
+            window.ThemeManager.init();
         }
 
-        const taskId = startResult.taskId;
-        console.log(`🚀 Task başlatıldı: ${taskId}`);
+        // Define Routes
+        const routes = {
+            '/': window.HomePage,
+            '/summarizer': window.SummarizerPage,
+            '/md-to-pdf': window.MdToPdfPage
+        };
 
-        // Poll for status every 5 seconds
-        let completed = false;
-        while (!completed) {
-            const status = await window.api.getConversionStatus(taskId);
+        // Initialize Router
+        window.Router.init(routes);
 
-            // Update progress bar
-            progressBar.style.width = `${status.progress || 0}%`;
+        // Global Event Listeners (e.g. for escape key, global shortcuts)
+        this.bindGlobalEvents();
 
-            // Update preview with partial result
-            if (status.markdown) {
-                currentMarkdown = status.markdown;
-                const editor = document.getElementById('markdown-editor');
-                editor.value = currentMarkdown;
-                window.preview.updatePreview(currentMarkdown);
-            }
+        // Health Check
+        window.api?.healthCheck().then(ok => {
+            if (!ok) window.utils.showToast('Sunucu bağlantısı kurulamadı', 'error');
+        });
+    },
 
-            if (status.status === 'completed') {
-                completed = true;
-                currentMarkdown = status.markdown;
-                currentFilename = cachedFiles.length === 1 ? cachedFiles[0].filename : 'combined';
+    bindGlobalEvents() {
+        // Prevent default drag/drop handler on window
+        window.addEventListener('dragover', e => e.preventDefault(), false);
+        window.addEventListener('drop', e => e.preventDefault(), false);
+    },
 
-                // Update editor
-                const editor = document.getElementById('markdown-editor');
-                editor.value = currentMarkdown;
+    // Shared Methods (download logic etc.)
+    setView(view) {
+        this.currentView = view;
 
-                // Update preview
-                window.preview.updatePreview(currentMarkdown);
-                window.preview.updateCharCount(currentMarkdown);
+        const markdownPanel = document.getElementById('markdown-panel');
+        const previewPanel = document.getElementById('preview-panel');
+        const contentPanels = document.getElementById('content-panels');
 
-                // Show result section
-                progressSection.classList.add('hidden');
-                resultSection.classList.remove('hidden');
+        if (!markdownPanel || !previewPanel || !contentPanels) return;
 
-                // Update all file statuses
-                cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'done'));
-                showToast(window.i18n?.t('toast.conversionComplete') || 'Conversion complete!', 'success');
-
-            } else if (status.status === 'failed') {
-                throw new Error(status.error || 'Conversion failed');
-
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.id === `tab-${view}`) {
+                btn.classList.add('active', 'bg-slate-700', 'text-white');
+                btn.classList.remove('text-slate-400');
             } else {
-                // Wait 5 seconds before next poll
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                btn.classList.remove('active', 'bg-slate-700', 'text-white');
+                btn.classList.add('text-slate-400');
             }
+        });
+
+        // Update panels
+        switch (view) {
+            case 'markdown':
+                markdownPanel.classList.remove('hidden');
+                previewPanel.classList.add('hidden');
+                contentPanels.style.gridTemplateColumns = '1fr';
+                contentPanels.classList.remove('split-view');
+                break;
+            case 'preview':
+                markdownPanel.classList.add('hidden');
+                previewPanel.classList.remove('hidden');
+                contentPanels.style.gridTemplateColumns = '1fr';
+                contentPanels.classList.remove('split-view');
+                break;
+            case 'split':
+                markdownPanel.classList.remove('hidden');
+                previewPanel.classList.remove('hidden');
+                contentPanels.style.gridTemplateColumns = '1fr 1fr';
+                contentPanels.classList.add('split-view');
+                break;
         }
+    },
 
-    } catch (error) {
-        console.error('Conversion error:', error);
-        cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'error'));
-        showToast(error.message || window.i18n?.t('toast.conversionFailed') || 'Conversion failed', 'error');
-        progressSection.classList.add('hidden');
-    }
-
-    convertBtn.disabled = false;
-}
-
-/**
- * Toggle theme
- */
-function toggleTheme() {
-    document.documentElement.classList.toggle('light');
-    const isLight = document.documentElement.classList.contains('light');
-
-    // Update icons
-    document.querySelector('.sun-icon')?.classList.toggle('hidden', !isLight);
-    document.querySelector('.moon-icon')?.classList.toggle('hidden', isLight);
-
-    // Save preference
-    localStorage.setItem('doc2md-theme', isLight ? 'light' : 'dark');
-}
-
-/**
- * Initialize theme from storage
- */
-function initTheme() {
-    const saved = localStorage.getItem('doc2md-theme');
-    if (saved === 'light') {
-        document.documentElement.classList.add('light');
-        document.querySelector('.sun-icon')?.classList.remove('hidden');
-        document.querySelector('.moon-icon')?.classList.add('hidden');
-    }
-}
-
-// Initialize app
-document.addEventListener('DOMContentLoaded', () => {
-    // Theme
-    initTheme();
-    document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
-
-    // Convert button
-    document.getElementById('convert-btn')?.addEventListener('click', handleConvert);
-
-    // View tabs
-    document.getElementById('tab-markdown')?.addEventListener('click', () => setView('markdown'));
-    document.getElementById('tab-preview')?.addEventListener('click', () => setView('preview'));
-    document.getElementById('tab-split')?.addEventListener('click', () => setView('split'));
-
-    // Copy button
-    document.getElementById('copy-btn')?.addEventListener('click', () => {
-        const markdown = document.getElementById('markdown-editor')?.value || '';
-        window.preview.copyToClipboard(markdown);
-    });
-
-    // Download MD button
-    document.getElementById('download-md-btn')?.addEventListener('click', async () => {
+    async handleDownloadMd() {
         const markdown = document.getElementById('markdown-editor')?.value || '';
 
         if (!markdown.trim()) {
-            showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
+            window.utils.showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
             return;
         }
 
         try {
-            const currentHash = simpleHash(markdown);
-            let titleToUse = generatedTitle;
+            await this.ensureTitle(markdown);
 
-            // Only generate title if not cached or content changed
-            if (!generatedTitle || titleMarkdownHash !== currentHash) {
-                showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
-
-                // Get currently selected model
-                const modelSelect = document.getElementById('model-select');
-                const selectedModel = modelSelect ? modelSelect.value : null;
-
-                const titleResponse = await fetch('/api/generate-title', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ markdown, model: selectedModel })
-                });
-                const titleResult = await titleResponse.json();
-                titleToUse = titleResult.title || 'document';
-
-                // Cache the result
-                generatedTitle = titleToUse;
-                titleMarkdownHash = currentHash;
-            }
-
-            // Save to Drive and download
+            // Save to Drive and download (or just download)
             const response = await fetch('/api/save/markdown', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ markdown, filename: `${titleToUse}.md` })
+                body: JSON.stringify({ markdown, filename: `${this.generatedTitle}.md` })
             });
 
             const result = await response.json();
@@ -287,107 +106,63 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success && result.fileId) {
                 // Proxy download
                 window.location.href = `/api/download/${result.fileId}`;
-                showToast(window.i18n?.t('toast.downloadStarted') || 'Download started', 'success');
+                window.utils.showToast(window.i18n?.t('toast.downloadStarted') || 'Download started', 'success');
             } else {
                 throw new Error(result.error || 'Kaydetme başarısız');
             }
         } catch (error) {
             console.error('Save error:', error);
             // Fallback to client-side download
-            window.preview.downloadMarkdown(markdown, currentFilename || 'document.md');
+            window.preview.downloadMarkdown(markdown, this.currentFilename || 'document.md');
         }
-    });
+    },
 
-    // Download PDF button
-    document.getElementById('download-pdf-btn')?.addEventListener('click', async () => {
+    async handleDownloadPdf() {
         const markdown = document.getElementById('markdown-editor')?.value || '';
 
         if (!markdown.trim()) {
-            showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
+            window.utils.showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
             return;
         }
 
         try {
-            const currentHash = simpleHash(markdown);
-            let titleToUse = generatedTitle;
-
-            // Only generate title if not cached or content changed
-            if (!generatedTitle || titleMarkdownHash !== currentHash) {
-                showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
-
-                // Get currently selected model
-                const modelSelect = document.getElementById('model-select');
-                const selectedModel = modelSelect ? modelSelect.value : null;
-
-                const titleResponse = await fetch('/api/generate-title', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ markdown, model: selectedModel })
-                });
-                const titleResult = await titleResponse.json();
-                titleToUse = titleResult.title || 'document';
-
-                // Cache the result
-                generatedTitle = titleToUse;
-                titleMarkdownHash = currentHash;
-            }
-
-            await window.preview.downloadPdf(markdown, `${titleToUse}.pdf`);
+            await this.ensureTitle(markdown);
+            await window.preview.downloadPdf(markdown, `${this.generatedTitle}.pdf`);
         } catch (error) {
             console.error('Title generation error:', error);
-            await window.preview.downloadPdf(markdown, currentFilename || 'document.pdf');
+            await window.preview.downloadPdf(markdown, this.currentFilename || 'document.pdf');
         }
-    });
+    },
 
-    // Summarize button - navigate to summarizer with markdown
-    document.getElementById('summarize-btn')?.addEventListener('click', () => {
-        const markdown = document.getElementById('markdown-editor')?.value;
-        if (!markdown || markdown.trim().length === 0) {
-            showToast('Özetlenecek içerik yok', 'error');
-            return;
+    async ensureTitle(markdown) {
+        const currentHash = window.utils.simpleHash(markdown);
+
+        // Only generate title if not cached or content changed
+        if (!this.generatedTitle || this.titleMarkdownHash !== currentHash) {
+            window.utils.showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
+
+            // Get currently selected model
+            const modelSelect = document.getElementById('model-select');
+            const selectedModel = modelSelect ? modelSelect.value : null;
+
+            const titleResponse = await fetch('/api/generate-title', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ markdown, model: selectedModel })
+            });
+            const titleResult = await titleResponse.json();
+            const titleToUse = titleResult.title || 'document';
+
+            // Cache the result
+            this.generatedTitle = titleToUse;
+            this.titleMarkdownHash = currentHash;
         }
-        sessionStorage.setItem('summarizeMarkdown', markdown);
-        window.location.href = '/summarizer';
-    });
-
-    // Editor sync with preview
-    document.getElementById('markdown-editor')?.addEventListener('input', (e) => {
-        const markdown = e.target.value;
-        window.preview.updatePreview(markdown);
-        window.preview.updateCharCount(markdown);
-    });
-
-    // Synchronized scrolling in split view
-    const editor = document.getElementById('markdown-editor');
-    const previewContent = document.getElementById('preview-content');
-    let isScrolling = false;
-
-    if (editor && previewContent) {
-        editor.addEventListener('scroll', () => {
-            if (isScrolling || window.currentView !== 'split') return;
-            isScrolling = true;
-
-            const scrollPercentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
-            previewContent.scrollTop = scrollPercentage * (previewContent.scrollHeight - previewContent.clientHeight);
-
-            setTimeout(() => isScrolling = false, 50);
-        });
-
-        previewContent.addEventListener('scroll', () => {
-            if (isScrolling || window.currentView !== 'split') return;
-            isScrolling = true;
-
-            const scrollPercentage = previewContent.scrollTop / (previewContent.scrollHeight - previewContent.clientHeight);
-            editor.scrollTop = scrollPercentage * (editor.scrollHeight - editor.clientHeight);
-
-            setTimeout(() => isScrolling = false, 50);
-        });
     }
+};
 
-    // Health check
-    window.api?.healthCheck().then(ok => {
-        if (!ok) {
-            showToast('Sunucu bağlantısı kurulamadı', 'error');
-        }
-    });
+window.app = App;
+
+// Bootstrap
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
 });

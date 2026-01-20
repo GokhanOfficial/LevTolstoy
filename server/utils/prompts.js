@@ -99,9 +99,48 @@ const MULTI_FILE_PROMPT = `Sen bir döküman içerik çıkarma uzmanısın. Sana
 - Dökümanların dilini koru
 - Markdown kod bloğu ile sarmalama`;
 
+
+const FILENAME_PROMPT = `Aşağıdaki markdown içeriği için kısa ve açıklayıcı bir dosya adı oluştur.
+
+Kurallar:
+- Sadece dosya adını yaz, uzantı ekleme
+- Türkçe karakterler kullanabilirsin (ş, ğ, ü, ö, ç, ı)
+- Maksimum 50 karakter
+- Boşluk yerine tire (-) kullan
+- Özel karakterler kullanma (sadece harf, rakam ve tire)
+- İçeriğin ana konusunu yansıtsın
+
+İçerik:`;
+
+const SUMMARIZE_PROMPT = `Sen bir içerik özetleme uzmanısın. Sana verilen metni detaylı bir şekilde özetleyeceksin.
+
+## KURALLAR:
+
+1. **Başlık ve Alt Başlık Düzeni**: Başlık hiyerarşisine çok dikkat et. Ana konuları # ile, alt konuları ## ve ### ile belirt.
+
+2. **Maddeler Halinde Yaz**: Her önemli bilgiyi madde işaretleri ile listele. Okunabilirliği artır.
+
+3. **Önemsiz Detayları Kısalt**: Tekrar eden veya gereksiz bilgileri atlayabilirsin.
+
+4. **Önemli Detayları Atlama**: Kritik bilgiler, tanımlar, formüller, tarihler ve isimler mutlaka özette yer almalı.
+
+5. **Özet Tablosu**: Metnin sonunda önemli bilgileri bir tablo halinde özetle. Tabloda anahtar kavramlar ve kısa açıklamaları olsun.
+
+## FORMAT:
+
+- Markdown formatında yaz
+- Akademik ve profesyonel bir dil kullan
+- Metnin orijinal dilini koru (Türkçe → Türkçe, İngilizce → İngilizce)
+
+## METİN:`;
+
 module.exports = {
    UNIVERSAL_PROMPT,
    MULTI_FILE_PROMPT,
+   FILENAME_PROMPT,
+   SUMMARIZE_PROMPT,
    getPromptForMimeType: () => UNIVERSAL_PROMPT,
-   getMultiFilePrompt: () => MULTI_FILE_PROMPT
+   getMultiFilePrompt: () => MULTI_FILE_PROMPT,
+   getFilenamePrompt: () => FILENAME_PROMPT,
+   getSummarizePrompt: () => SUMMARIZE_PROMPT
 };

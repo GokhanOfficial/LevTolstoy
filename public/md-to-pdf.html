@@ -180,203 +180,21 @@ console.log('Kod bloğu');
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Scripts -->
+    <script src="/js/utils.js"></script>
     <script src="/js/i18n.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/fileUpload.js"></script>
+    <script src="/js/router.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/preview.js"></script>
-    <script>
-        // Editor page specific logic
 
-        // Toast Notification Helper
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
+    <!-- Page Modules -->
+    <script src="/js/pages/index.js"></script>
+    <script src="/js/pages/summarizer.js"></script>
+    <script src="/js/pages/md-to-pdf.js"></script>
 
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' : ''}
-              ${type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' : ''}
-              ${type === 'info' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' : ''}
-            </svg>
-            <span>${message}</span>
-          `;
-
-            container.appendChild(toast);
-
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-        window.showToast = showToast;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const editor = document.getElementById('markdown-editor');
-            const previewContent = document.getElementById('preview-content');
-
-            // Theme
-            const saved = localStorage.getItem('doc2md-theme');
-            if (saved === 'light') {
-                document.documentElement.classList.add('light');
-                document.querySelector('.sun-icon')?.classList.remove('hidden');
-                document.querySelector('.moon-icon')?.classList.add('hidden');
-            }
-
-            document.getElementById('theme-toggle')?.addEventListener('click', () => {
-                document.documentElement.classList.toggle('light');
-                const isLight = document.documentElement.classList.contains('light');
-                document.querySelector('.sun-icon')?.classList.toggle('hidden', !isLight);
-                document.querySelector('.moon-icon')?.classList.toggle('hidden', isLight);
-                localStorage.setItem('doc2md-theme', isLight ? 'light' : 'dark');
-            });
-
-            // Editor sync with preview
-            editor.addEventListener('input', (e) => {
-                const markdown = e.target.value;
-                window.preview.updatePreview(markdown);
-                window.preview.updateCharCount(markdown);
-            });
-
-            // Initial preview update
-            window.preview.updatePreview(editor.value);
-            window.preview.updateCharCount(editor.value);
-
-            // Synchronized scrolling (optimized for smoothness)
-            let isScrolling = false;
-
-            editor.addEventListener('scroll', () => {
-                if (isScrolling) return;
-                isScrolling = true;
-
-                const scrollPercentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
-                previewContent.scrollTop = scrollPercentage * (previewContent.scrollHeight - previewContent.clientHeight);
-
-                setTimeout(() => isScrolling = false, 50);
-            });
-
-            previewContent.addEventListener('scroll', () => {
-                if (isScrolling) return;
-                isScrolling = true;
-
-                const scrollPercentage = previewContent.scrollTop / (previewContent.scrollHeight - previewContent.clientHeight);
-                editor.scrollTop = scrollPercentage * (editor.scrollHeight - editor.clientHeight);
-
-                setTimeout(() => isScrolling = false, 50);
-            });
-
-            // Copy button
-            document.getElementById('copy-btn')?.addEventListener('click', () => {
-                window.preview.copyToClipboard(editor.value);
-            });
-
-            // Title caching state
-            let generatedTitle = null;
-            let titleMarkdownHash = '';
-
-            // Simple hash for comparing markdown content
-            function simpleHash(str) {
-                let hash = 0;
-                for (let i = 0; i < str.length; i++) {
-                    const char = str.charCodeAt(i);
-                    hash = ((hash << 5) - hash) + char;
-                    hash = hash & hash;
-                }
-                return hash.toString();
-            }
-
-            // Download MD button
-            document.getElementById('download-md-btn')?.addEventListener('click', async () => {
-                const markdown = editor.value;
-
-                if (!markdown.trim()) {
-                    showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
-                    return;
-                }
-
-                try {
-                    const currentHash = simpleHash(markdown);
-                    let titleToUse = generatedTitle;
-
-                    // Only generate title if not cached or content changed
-                    if (!generatedTitle || titleMarkdownHash !== currentHash) {
-                        showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
-
-                        const titleResponse = await fetch('/api/generate-title', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ markdown })
-                        });
-                        const titleResult = await titleResponse.json();
-                        titleToUse = titleResult.title || 'document';
-
-                        // Cache the result
-                        generatedTitle = titleToUse;
-                        titleMarkdownHash = currentHash;
-                    }
-
-                    const response = await fetch('/api/save/markdown', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ markdown, filename: `${titleToUse}.md` })
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success && result.fileId) {
-                        // Proxy download
-                        window.location.href = `/api/download/${result.fileId}`;
-                        showToast(window.i18n?.t('toast.downloadStarted') || 'Download started', 'success');
-                    } else {
-                        throw new Error(result.error || 'Kaydetme başarısız');
-                    }
-                } catch (error) {
-                    console.error('Save error:', error);
-                    // Fallback to client-side download
-                    console.log('Falling back to client-side download');
-                    window.preview.downloadMarkdown(markdown, 'document.md');
-                }
-            });
-
-            // Download PDF button
-            document.getElementById('download-pdf-btn')?.addEventListener('click', async () => {
-                const markdown = editor.value;
-
-                if (!markdown.trim()) {
-                    showToast(window.i18n?.t('toast.emptyContent') || 'Content is empty', 'error');
-                    return;
-                }
-
-                try {
-                    const currentHash = simpleHash(markdown);
-                    let titleToUse = generatedTitle;
-
-                    // Only generate title if not cached or content changed
-                    if (!generatedTitle || titleMarkdownHash !== currentHash) {
-                        showToast(window.i18n?.t('toast.generatingFilename') || 'Generating filename...', 'info');
-
-                        const titleResponse = await fetch('/api/generate-title', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ markdown })
-                        });
-                        const titleResult = await titleResponse.json();
-                        titleToUse = titleResult.title || 'document';
-
-                        // Cache the result
-                        generatedTitle = titleToUse;
-                        titleMarkdownHash = currentHash;
-                    }
-
-                    await window.preview.downloadPdf(markdown, `${titleToUse}.pdf`);
-                } catch (error) {
-                    console.error('Title generation error:', error);
-                    await window.preview.downloadPdf(markdown, 'document.pdf');
-                }
-            });
-        });
-    </script>
+    <!-- Main App -->
+    <script src="/js/app.js"></script>
 </body>
 
 </html>

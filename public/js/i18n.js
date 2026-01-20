@@ -25,6 +25,7 @@ const translations = {
 
         // Navigation
         'nav.converter': 'Metinleştirici',
+        'nav.summarizer': 'Özetleyici',
         'nav.editor': 'MD to PDF',
 
         // Editor
@@ -33,7 +34,7 @@ const translations = {
         // Options
         'options.advanced': 'Gelişmiş Seçenekler',
         'options.model': 'Yapay Zeka Modeli',
-        'models.gemini3flash': 'Gemini 3 Flash Preview (Önerilen)',
+        'models.gemini3flash': 'Gemini 3 Flash (Önerilen)',
         'models.gemini25flash': 'Gemini 2.5 Flash',
         'models.gemini25flashlite': 'Gemini 2.5 Flash Lite',
 
@@ -57,6 +58,26 @@ const translations = {
         'toast.noFiles': 'Lütfen önce dosya seçin',
         'toast.unsupportedFormat': 'Desteklenmeyen dosya formatı',
         'toast.emptyContent': 'İçerik boş',
+
+        // Summarizer Page
+        'summarizer.inputTitle': 'Metin Girişi',
+        'summarizer.outputTitle': 'Özet Çıktısı',
+        'summarizer.placeholder': 'Özetlenecek metni buraya yapıştırın...',
+        'summarizer.outputPlaceholder': 'Özet burada görünecek...',
+        'summarizer.summarizing': 'Özetleniyor...',
+        'summarizer.wait': 'Lütfen bekleyin',
+        'summarizer.summaryComplete': 'Özetleme tamamlandı!',
+        'summarizer.summaryFailed': 'Özetleme başarısız',
+        'summarizer.copySuccess': 'Panoya kopyalandı!',
+        'summarizer.emptyInput': 'Lütfen özetlenecek metin girin',
+        'summarizer.pdfGenerating': 'PDF oluşturuluyor...',
+        'summarizer.pdfFailed': 'PDF oluşturulamadı',
+
+        // Models
+        'models.gemini3flash': 'Gemini 3 Flash',
+        'models.gpt52': 'GPT 5.2',
+        'models.glm47': 'GLM 4.7',
+        'models.qwen3max': 'Qwen3 Max',
 
         // Errors
         'errors.noFile': 'Dosya yüklenmedi',
@@ -89,6 +110,7 @@ const translations = {
 
         // Navigation
         'nav.converter': 'Textifier',
+        'nav.summarizer': 'Summarizer',
         'nav.editor': 'MD to PDF',
 
         // Editor
@@ -97,7 +119,7 @@ const translations = {
         // Options
         'options.advanced': 'Advanced Options',
         'options.model': 'AI Model',
-        'models.gemini3flash': 'Gemini 3 Flash Preview (Recommended)',
+        'models.gemini3flash': 'Gemini 3 Flash (Recommended)',
         'models.gemini25flash': 'Gemini 2.5 Flash',
         'models.gemini25flashlite': 'Gemini 2.5 Flash Lite',
 
@@ -121,6 +143,26 @@ const translations = {
         'toast.noFiles': 'Please select files first',
         'toast.unsupportedFormat': 'Unsupported file format',
         'toast.emptyContent': 'Content is empty',
+
+        // Summarizer Page
+        'summarizer.inputTitle': 'Text Input',
+        'summarizer.outputTitle': 'Summary Output',
+        'summarizer.placeholder': 'Paste text to summarize here...',
+        'summarizer.outputPlaceholder': 'Summary will appear here...',
+        'summarizer.summarizing': 'Summarizing...',
+        'summarizer.wait': 'Please wait',
+        'summarizer.summaryComplete': 'Summarization complete!',
+        'summarizer.summaryFailed': 'Summarization failed',
+        'summarizer.copySuccess': 'Copied to clipboard!',
+        'summarizer.emptyInput': 'Please enter text to summarize',
+        'summarizer.pdfGenerating': 'Generating PDF...',
+        'summarizer.pdfFailed': 'PDF generation failed',
+
+        // Models
+        'models.gemini3flash': 'Gemini 3 Flash',
+        'models.gpt52': 'GPT 5.2',
+        'models.glm47': 'GLM 4.7',
+        'models.qwen3max': 'Qwen3 Max',
 
         // Errors
         'errors.noFile': 'No file uploaded',

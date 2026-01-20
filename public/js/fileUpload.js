@@ -273,38 +273,59 @@ function clearFiles() {
     updateConvertButton();
 }
 
-// Initialize drag & drop
-document.addEventListener('DOMContentLoaded', () => {
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
+/**
+ * Initialize drag & drop listeners
+ */
+function init(dropZone, fileInput) {
+    if (!dropZone || !fileInput) return;
 
     // Click to select
-    dropZone.addEventListener('click', () => fileInput.click());
+    // Remove old listeners to avoid duplicates if possible, or rely on caller to clean up
+    // Cloning nodes is a common trick to strip listeners
+
+    const newDropZone = dropZone.cloneNode(true);
+    dropZone.parentNode.replaceChild(newDropZone, dropZone);
+
+    const newFileInput = fileInput.cloneNode(true);
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+
+    newDropZone.addEventListener('click', () => newFileInput.click());
 
     // File input change
-    fileInput.addEventListener('change', (e) => {
+    newFileInput.addEventListener('change', (e) => {
         Array.from(e.target.files).forEach(addFile);
         e.target.value = ''; // Reset input
     });
 
     // Drag events
-    dropZone.addEventListener('dragover', (e) => {
+    newDropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('dragover');
+        newDropZone.classList.add('dragover');
     });
 
-    dropZone.addEventListener('dragleave', (e) => {
+    newDropZone.addEventListener('dragleave', (e) => {
         e.preventDefault();
-        dropZone.classList.remove('dragover');
+        newDropZone.classList.remove('dragover');
     });
 
-    dropZone.addEventListener('drop', (e) => {
+    newDropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.classList.remove('dragover');
+        newDropZone.classList.remove('dragover');
 
         const files = e.dataTransfer.files;
         Array.from(files).forEach(addFile);
     });
+
+    return { dropZone: newDropZone, fileInput: newFileInput };
+}
+
+// Initialize drag & drop on load
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    if (dropZone && fileInput) {
+        init(dropZone, fileInput);
+    }
 
     // Update file list on language change
     window.addEventListener('languageChanged', renderFileList);
@@ -312,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Export functions
 window.fileUpload = {
+    init,
     getUploadedFiles,
     getCachedFiles,
     clearFiles,
