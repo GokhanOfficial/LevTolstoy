@@ -1,0 +1,354 @@
+/* PDF Preview CSS - Shared styling between frontend preview and PDF generation */
+/* This file mirrors the PDF_CSS in pdfService.js for consistent preview */
+
+/* Dark Mode (default) */
+.pdf-preview {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.8;
+    padding: 2rem;
+    margin: 0;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+}
+
+.pdf-preview pre {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    margin: 1em 0;
+    padding: 1em;
+    overflow-x: auto;
+}
+
+.pdf-preview code {
+    font-family: 'Fira Code', 'JetBrains Mono', Consolas, Monaco, monospace;
+    font-size: 0.9em;
+}
+
+.pdf-preview :not(pre)>code {
+    background: #334155;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #f472b6;
+}
+
+.pdf-preview img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.pdf-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.pdf-preview th,
+.pdf-preview td {
+    border: 1px solid #334155;
+    padding: 12px;
+}
+
+.pdf-preview th {
+    background-color: #1e293b;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.pdf-preview blockquote {
+    border-left: 4px solid #818cf8;
+    padding-left: 1em;
+    margin-left: 0;
+    color: #94a3b8;
+    font-style: italic;
+    background: #1e293b;
+    padding: 1em;
+    border-radius: 0 8px 8px 0;
+}
+
+.pdf-preview h1 {
+    font-size: 2em;
+    color: #f1f5f9;
+    border-bottom: 2px solid #334155;
+    padding-bottom: 0.5rem;
+    margin: 1.5rem 0 1rem 0;
+}
+
+.pdf-preview h2 {
+    font-size: 1.5em;
+    color: #e2e8f0;
+    margin: 1.5rem 0 0.75rem 0;
+}
+
+.pdf-preview h3 {
+    font-size: 1.25em;
+    color: #cbd5e1;
+    margin: 1.25rem 0 0.5rem 0;
+}
+
+.pdf-preview ul,
+.pdf-preview ol {
+    padding-left: 2em;
+}
+
+.pdf-preview li {
+    margin: 0.4em 0;
+}
+
+.pdf-preview a {
+    color: #818cf8;
+    text-decoration: none;
+}
+
+.pdf-preview a:hover {
+    text-decoration: underline;
+}
+
+.pdf-preview hr {
+    border: none;
+    border-top: 1px solid #334155;
+    margin: 2rem 0;
+}
+
+/* Light Mode */
+html.light .pdf-preview {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+}
+
+html.light .pdf-preview pre {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+html.light .pdf-preview :not(pre)>code {
+    background: #f1f5f9;
+    color: #db2777;
+}
+
+html.light .pdf-preview th,
+html.light .pdf-preview td {
+    border-color: #e2e8f0;
+}
+
+html.light .pdf-preview th {
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+html.light .pdf-preview blockquote {
+    border-left-color: #6366f1;
+    color: #64748b;
+    background: #f8fafc;
+}
+
+html.light .pdf-preview h1 {
+    color: #0f172a;
+    border-bottom-color: #e2e8f0;
+}
+
+html.light .pdf-preview h2 {
+    color: #1e293b;
+}
+
+html.light .pdf-preview h3 {
+    color: #334155;
+}
+
+html.light .pdf-preview a {
+    color: #6366f1;
+}
+
+html.light .pdf-preview hr {
+    border-top-color: #e2e8f0;
+}
+
+/* Highlight.js GitHub Dark Theme (for dark mode) */
+.pdf-preview .hljs {
+    color: #e2e8f0;
+    background: #1e293b
+}
+
+.pdf-preview .hljs-doctag,
+.pdf-preview .hljs-keyword,
+.pdf-preview .hljs-meta .hljs-keyword,
+.pdf-preview .hljs-template-tag,
+.pdf-preview .hljs-template-variable,
+.pdf-preview .hljs-type,
+.pdf-preview .hljs-variable.language_ {
+    color: #f472b6
+}
+
+.pdf-preview .hljs-title,
+.pdf-preview .hljs-title.class_,
+.pdf-preview .hljs-title.class_.inherited__,
+.pdf-preview .hljs-title.function_ {
+    color: #c084fc
+}
+
+.pdf-preview .hljs-attr,
+.pdf-preview .hljs-attribute,
+.pdf-preview .hljs-literal,
+.pdf-preview .hljs-meta,
+.pdf-preview .hljs-number,
+.pdf-preview .hljs-operator,
+.pdf-preview .hljs-selector-attr,
+.pdf-preview .hljs-selector-class,
+.pdf-preview .hljs-selector-id,
+.pdf-preview .hljs-variable {
+    color: #60a5fa
+}
+
+.pdf-preview .hljs-meta .hljs-string,
+.pdf-preview .hljs-regexp,
+.pdf-preview .hljs-string {
+    color: #a5f3fc
+}
+
+.pdf-preview .hljs-built_in,
+.pdf-preview .hljs-symbol {
+    color: #fbbf24
+}
+
+.pdf-preview .hljs-code,
+.pdf-preview .hljs-comment,
+.pdf-preview .hljs-formula {
+    color: #64748b
+}
+
+.pdf-preview .hljs-name,
+.pdf-preview .hljs-quote,
+.pdf-preview .hljs-selector-pseudo,
+.pdf-preview .hljs-selector-tag {
+    color: #4ade80
+}
+
+.pdf-preview .hljs-subst {
+    color: #e2e8f0
+}
+
+.pdf-preview .hljs-section {
+    color: #60a5fa;
+    font-weight: 700
+}
+
+.pdf-preview .hljs-bullet {
+    color: #fbbf24
+}
+
+.pdf-preview .hljs-emphasis {
+    color: #e2e8f0;
+    font-style: italic
+}
+
+.pdf-preview .hljs-strong {
+    color: #e2e8f0;
+    font-weight: 700
+}
+
+.pdf-preview .hljs-addition {
+    color: #4ade80;
+    background-color: #14532d
+}
+
+.pdf-preview .hljs-deletion {
+    color: #f87171;
+    background-color: #7f1d1d
+}
+
+/* Light mode highlight.js */
+html.light .pdf-preview .hljs {
+    color: #24292e;
+    background: #f8fafc
+}
+
+html.light .pdf-preview .hljs-doctag,
+html.light .pdf-preview .hljs-keyword,
+html.light .pdf-preview .hljs-meta .hljs-keyword,
+html.light .pdf-preview .hljs-template-tag,
+html.light .pdf-preview .hljs-template-variable,
+html.light .pdf-preview .hljs-type,
+html.light .pdf-preview .hljs-variable.language_ {
+    color: #d73a49
+}
+
+html.light .pdf-preview .hljs-title,
+html.light .pdf-preview .hljs-title.class_,
+html.light .pdf-preview .hljs-title.class_.inherited__,
+html.light .pdf-preview .hljs-title.function_ {
+    color: #6f42c1
+}
+
+html.light .pdf-preview .hljs-attr,
+html.light .pdf-preview .hljs-attribute,
+html.light .pdf-preview .hljs-literal,
+html.light .pdf-preview .hljs-meta,
+html.light .pdf-preview .hljs-number,
+html.light .pdf-preview .hljs-operator,
+html.light .pdf-preview .hljs-selector-attr,
+html.light .pdf-preview .hljs-selector-class,
+html.light .pdf-preview .hljs-selector-id,
+html.light .pdf-preview .hljs-variable {
+    color: #005cc5
+}
+
+html.light .pdf-preview .hljs-meta .hljs-string,
+html.light .pdf-preview .hljs-regexp,
+html.light .pdf-preview .hljs-string {
+    color: #032f62
+}
+
+html.light .pdf-preview .hljs-built_in,
+html.light .pdf-preview .hljs-symbol {
+    color: #e36209
+}
+
+html.light .pdf-preview .hljs-code,
+html.light .pdf-preview .hljs-comment,
+html.light .pdf-preview .hljs-formula {
+    color: #6a737d
+}
+
+html.light .pdf-preview .hljs-name,
+html.light .pdf-preview .hljs-quote,
+html.light .pdf-preview .hljs-selector-pseudo,
+html.light .pdf-preview .hljs-selector-tag {
+    color: #22863a
+}
+
+html.light .pdf-preview .hljs-subst {
+    color: #24292e
+}
+
+html.light .pdf-preview .hljs-section {
+    color: #005cc5;
+    font-weight: 700
+}
+
+html.light .pdf-preview .hljs-bullet {
+    color: #735c0f
+}
+
+html.light .pdf-preview .hljs-emphasis {
+    color: #24292e;
+    font-style: italic
+}
+
+html.light .pdf-preview .hljs-strong {
+    color: #24292e;
+    font-weight: 700
+}
+
+html.light .pdf-preview .hljs-addition {
+    color: #22863a;
+    background-color: #f0fff4
+}
+
+html.light .pdf-preview .hljs-deletion {
+    color: #b31d28;
+    background-color: #ffeef0
+}

@@ -106,6 +106,11 @@ function updatePreview(markdown) {
   const previewContent = document.getElementById('preview-content');
   if (!previewContent) return;
 
+  // Add pdf-preview class for PDF-like styling
+  if (!previewContent.classList.contains('pdf-preview')) {
+    previewContent.classList.add('pdf-preview');
+  }
+
   const html = renderMarkdown(markdown);
   previewContent.innerHTML = html;
 

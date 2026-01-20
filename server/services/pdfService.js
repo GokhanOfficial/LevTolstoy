@@ -1,10 +1,12 @@
-const puppeteer = require('puppeteer');
+const { mdToPdf } = require('md-to-pdf');
 const crypto = require('crypto');
 const config = require('../config');
 const googleDriveService = require('./googleDrive');
 const katex = require('katex');
+const fs = require('fs');
+const path = require('path');
 
-// PDF Generation CSS (includes highlight.js github theme inlined)
+// PDF Generation CSS - shared with frontend via pdf-preview.css
 const PDF_CSS = `
 /* Base styles */
 body {
@@ -86,9 +88,6 @@ hr {
   border-top: 1px solid #e2e8f0;
   margin: 2rem 0;
 }
-
-/* Highlight.js GitHub Theme (inlined) */
-.hljs{color:#24292e;background:#f6f8fa}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#d73a49}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#005cc5}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#032f62}.hljs-built_in,.hljs-symbol{color:#e36209}.hljs-code,.hljs-comment,.hljs-formula{color:#6a737d}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#22863a}.hljs-subst{color:#24292e}.hljs-section{color:#005cc5;font-weight:700}.hljs-bullet{color:#735c0f}.hljs-emphasis{color:#24292e;font-style:italic}.hljs-strong{color:#24292e;font-weight:700}.hljs-addition{color:#22863a;background-color:#f0fff4}.hljs-deletion{color:#b31d28;background-color:#ffeef0}
 `;
 
 /**
@@ -134,94 +133,54 @@ function preprocessMarkdown(markdown) {
 }
 
 /**
- * Convert markdown to PDF buffer using marked + puppeteer
+ * Convert markdown to PDF buffer using md-to-pdf
  * @param {string} markdown - Markdown content
  * @returns {Promise<Buffer>} - PDF buffer
  */
 async function generatePdf(markdown) {
-  // Dynamic import for ESM module
-  const { marked } = await import('marked');
-
   // Pre-process markdown (SSR Math + Escaping)
   const safeMarkdown = preprocessMarkdown(markdown);
 
-  // Configure marked
-  marked.setOptions({
-    breaks: true,
-    gfm: true
-  });
-
-  // Convert markdown to HTML
-  const htmlContent = marked.parse(safeMarkdown);
-
-  // Build full HTML document
-  const fullHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <style>${PDF_CSS}</style>
-</head>
-<body class="pdf-body">
-  ${htmlContent}
-</body>
-</html>
-  `;
-
-  // Launch puppeteer with serverless-compatible options
-  let browser;
-  try {
-    const launchOptions = {
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
-      ]
-    };
-
-    // Check if running in serverless environment
-    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
-
-    if (isServerless) {
-      try {
-        const chromium = require('@sparticuz/chromium');
-        launchOptions.executablePath = await chromium.executablePath();
-        launchOptions.args = chromium.args;
-        launchOptions.headless = chromium.headless;
-        console.log('📦 Using @sparticuz/chromium for serverless PDF generation');
-      } catch (e) {
-        console.warn('⚠️ @sparticuz/chromium not available, using default puppeteer');
+  const result = await mdToPdf(
+    { content: safeMarkdown },
+    {
+      css: PDF_CSS,
+      script: [],
+      stylesheet: [
+        'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'
+      ],
+      body_class: ['pdf-body'],
+      highlight_style: 'github',
+      launch_options: {
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
+      },
+      pdf_options: {
+        format: 'A4',
+        margin: {
+          top: '0mm',
+          bottom: '0mm',
+          left: '0mm',
+          right: '0mm'
+        },
+        printBackground: true
+      },
+      marked_options: {
+        breaks: true,
+        gfm: true
       }
     }
+  );
 
-    browser = await puppeteer.launch(launchOptions);
-    const page = await browser.newPage();
-
-    // Set content and wait for styles to load
-    await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
-
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '0mm',
-        bottom: '0mm',
-        left: '0mm',
-        right: '0mm'
-      },
-      printBackground: true
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
+  if (!result || !result.content) {
+    throw new Error('PDF generation failed');
   }
+
+  return result.content;
 }
 
 /**
