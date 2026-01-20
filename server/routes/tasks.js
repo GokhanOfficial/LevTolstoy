@@ -123,10 +123,15 @@ async function processTask(taskId, files, model) {
         task.progress = 30;
 
         // Process files with Gemini
-        const markdown = await fileHandler.processMultipleFiles(fileBuffers, model, (progress) => {
-            // Progress callback
-            task.progress = 30 + Math.floor(progress * 0.6);
-            task.markdown = fileHandler.getPartialResult?.() || task.markdown;
+        // We track characters/token count to simulate percentage, or just rely on 'Processing...' state.
+        const markdown = await fileHandler.processMultipleFiles(fileBuffers, model, (chunk) => {
+            // Streaming content update
+            task.markdown += chunk;
+
+            // Artificial progress update
+            if (task.progress < 90) {
+                task.progress += 1;
+            }
         });
 
         task.markdown = markdown;

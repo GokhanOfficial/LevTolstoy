@@ -4,6 +4,7 @@
 
 const SummarizerPage = {
     currentSummary: '',
+    currentFilename: 'ozet',
 
     mount() {
         console.log('SummarizerPage mounted');
@@ -77,6 +78,7 @@ const SummarizerPage = {
                 if (status.status === 'completed') {
                     completed = true;
                     this.currentSummary = status.summary;
+                    this.currentFilename = status.filename || 'ozet';
                     this.renderPreview(this.currentSummary);
                     progressSection.classList.add('hidden');
                     actionButtons.forEach(btn => btn?.classList.remove('hidden'));
@@ -133,12 +135,12 @@ const SummarizerPage = {
 
     downloadMd() {
         if (!this.currentSummary) return;
-        window.preview.downloadMarkdown(this.currentSummary, 'ozet.md');
+        window.preview.downloadMarkdown(this.currentSummary, `${this.currentFilename}.md`);
     },
 
     async downloadPdf() {
         if (!this.currentSummary) return;
-        await window.preview.downloadPdf(this.currentSummary, 'ozet.pdf');
+        await window.preview.downloadPdf(this.currentSummary, `${this.currentFilename}.pdf`);
     }
 };
 

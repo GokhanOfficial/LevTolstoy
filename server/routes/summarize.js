@@ -34,6 +34,7 @@ router.post('/start', async (req, res) => {
             id: taskId,
             status: TaskStatus.PENDING,
             summary: '',
+            filename: null,
             progress: 0,
             error: null,
             createdAt: Date.now(),
@@ -80,6 +81,7 @@ router.get('/status/:taskId', (req, res) => {
         taskId: task.id,
         status: task.status,
         summary: task.summary,
+        filename: task.filename,
         progress: task.progress,
         error: task.error
     });
@@ -94,12 +96,34 @@ async function processSummarization(taskId, markdown, model) {
 
     try {
         task.status = TaskStatus.PROCESSING;
-        task.progress = 30;
+        task.progress = 10; // Started
 
-        // Use gemini service to summarize
-        const summary = await gemini.summarizeText(markdown, model);
+        // Use gemini service to summarize with streaming callback
+        const summary = await gemini.summarizeText(markdown, model, (chunk) => {
+            // Update task with new chunk
+            task.summary += chunk;
 
+            // Artificial progress increment up to 90%
+            if (task.progress < 90) {
+                task.progress += 2;
+            }
+        });
+
+        // Ensure final summary is set (though callback should have built it mostly)
+        // Note: The callback builds `task.summary` incrementally. 
+        // The return value `summary` from `summarizeText` is the clean final text.
+        // We should overwrite with the final clean text to ensures markdown blocks are stripped correctly at the end.
         task.summary = summary;
+
+        // Generate filename from summary content
+        try {
+            task.filename = await gemini.generateFilename(summary, model);
+            console.log(`🏷️ Özet dosya adı: ${task.filename}`);
+        } catch (filenameError) {
+            console.warn('Dosya adı üretilemedi, varsayılan kullanılacak:', filenameError.message);
+            task.filename = 'ozet';
+        }
+
         task.progress = 100;
         task.status = TaskStatus.COMPLETED;
 

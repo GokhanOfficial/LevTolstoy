@@ -32,13 +32,20 @@ async function convertToMarkdown(fileBuffer, mimeType, model) {
  * @param {string} model - Gemini model name
  * @returns {Promise<string>} - Birleşik markdown içeriği
  */
-async function convertMultipleToMarkdown(files, model = 'gemini-3-flash-preview') {
+/**
+ * Birden fazla dosyayı tek bir API çağrısı ile markdown'a dönüştürür
+ * @param {Array<{buffer: Buffer, mimeType: string, name: string}>} files - Dosya dizisi
+ * @param {string} model - Gemini model name
+ * @param {function} onChunk - Callback function for streaming chunks
+ * @returns {Promise<string>} - Birleşik markdown içeriği
+ */
+async function convertMultipleToMarkdown(files, model = 'gemini-3-flash-preview', onChunk = null) {
     if (!config.gemini.apiKey) {
         throw new Error('GEMINI_API_KEY tanımlanmamış');
     }
 
     const baseUrl = getBaseUrl();
-    const endpoint = `${baseUrl}/models/${model}:generateContent?key=${config.gemini.apiKey}`;
+    const endpoint = `${baseUrl}/models/${model}:streamGenerateContent?key=${config.gemini.apiKey}`;
 
     // Tek dosya mı yoksa çoklu mu?
     const isMultiple = files.length > 1;
@@ -76,7 +83,7 @@ async function convertMultipleToMarkdown(files, model = 'gemini-3-flash-preview'
         }
     };
 
-    console.log(`🤖 Gemini API: ${baseUrl} | Model: ${model} | Dosya sayısı: ${files.length}`);
+    console.log(`🤖 Gemini API (Stream): ${baseUrl} | Model: ${model} | Dosya sayısı: ${files.length}`);
 
     const response = await fetch(endpoint, {
         method: 'POST',
@@ -92,17 +99,75 @@ async function convertMultipleToMarkdown(files, model = 'gemini-3-flash-preview'
         throw new Error(`Gemini API hatası: ${errorMessage}`);
     }
 
-    const data = await response.json();
+    // Process the stream (SSE format: data: {...}\n)
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let streamBuffer = '';
 
-    // Extract text from response
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-    if (!text) {
-        throw new Error('Gemini API boş yanıt döndürdü');
+            streamBuffer += decoder.decode(value, { stream: true });
+
+            // Process complete lines (SSE sends data: {...}\n\n)
+            const lines = streamBuffer.split('\n');
+
+            // Keep incomplete last line in buffer
+            streamBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // Skip empty lines and comments (lines starting with :)
+                if (!trimmedLine || trimmedLine.startsWith(':')) continue;
+
+                // Parse data: lines
+                if (trimmedLine.startsWith('data:')) {
+                    const jsonStr = trimmedLine.substring(5).trim();
+                    if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (textChunk) {
+                            fullText += textChunk;
+                            if (onChunk) onChunk(textChunk);
+                        }
+                    } catch (err) {
+                        // Ignore parse errors for partial JSON
+                    }
+                }
+            }
+        }
+
+        // Process any remaining buffer content
+        if (streamBuffer.trim()) {
+            const trimmedLine = streamBuffer.trim();
+            if (trimmedLine.startsWith('data:')) {
+                const jsonStr = trimmedLine.substring(5).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (textChunk) {
+                            fullText += textChunk;
+                            if (onChunk) onChunk(textChunk);
+                        }
+                    } catch (err) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Stream processing error:', e);
     }
 
     // Markdown kod bloğu sarmalayıcısını temizle
-    let cleanText = text.replace(/^```markdown\n?/i, '').replace(/\n?```$/i, '');
+    let cleanText = fullText.replace(/^```markdown\n?/i, '').replace(/\n?```$/i, '');
 
     return cleanText.trim();
 }
@@ -190,18 +255,19 @@ Dosya adı:`;
 }
 
 /**
- * Summarize text using Gemini API
+ * Summarize text using Gemini API with streaming support
  * @param {string} text - Text to summarize
  * @param {string} model - Gemini model name
- * @returns {Promise<string>} - Summary
+ * @param {function} onChunk - Callback function for streaming chunks
+ * @returns {Promise<string>} - Complete summary
  */
-async function summarizeText(text, model = 'gemini-2.5-flash') {
+async function summarizeText(text, model = 'gemini-2.5-flash', onChunk = null) {
     if (!config.gemini.apiKey) {
         throw new Error('GEMINI_API_KEY tanımlanmamış');
     }
 
     const baseUrl = getBaseUrl();
-    const endpoint = `${baseUrl}/models/${model}:generateContent?key=${config.gemini.apiKey}`;
+    const endpoint = `${baseUrl}/models/${model}:streamGenerateContent?key=${config.gemini.apiKey}`;
 
     const prompt = `${getSummarizePrompt()}
 
@@ -217,7 +283,7 @@ ${text}`;
         }
     };
 
-    console.log(`📝 Gemini API Özetleme: ${baseUrl} | Model: ${model}`);
+    console.log(`📝 Gemini API Özetleme (Stream): ${baseUrl} | Model: ${model}`);
 
     const response = await fetch(endpoint, {
         method: 'POST',
@@ -231,16 +297,75 @@ ${text}`;
         throw new Error(`Gemini API hatası: ${errorMessage}`);
     }
 
-    const data = await response.json();
-    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Process the stream (SSE format: data: {...}\n)
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let streamBuffer = '';
 
-    if (!summary) {
-        throw new Error('Gemini API boş yanıt döndürdü');
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            streamBuffer += decoder.decode(value, { stream: true });
+
+            // Process complete lines (SSE sends data: {...}\n\n)
+            const lines = streamBuffer.split('\n');
+
+            // Keep incomplete last line in buffer
+            streamBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // Skip empty lines and comments (lines starting with :)
+                if (!trimmedLine || trimmedLine.startsWith(':')) continue;
+
+                // Parse data: lines
+                if (trimmedLine.startsWith('data:')) {
+                    const jsonStr = trimmedLine.substring(5).trim();
+                    if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (textChunk) {
+                            fullText += textChunk;
+                            if (onChunk) onChunk(textChunk);
+                        }
+                    } catch (err) {
+                        // Ignore parse errors for partial JSON
+                    }
+                }
+            }
+        }
+
+        // Process any remaining buffer content
+        if (streamBuffer.trim()) {
+            const trimmedLine = streamBuffer.trim();
+            if (trimmedLine.startsWith('data:')) {
+                const jsonStr = trimmedLine.substring(5).trim();
+                if (jsonStr && jsonStr !== '[DONE]') {
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (textChunk) {
+                            fullText += textChunk;
+                            if (onChunk) onChunk(textChunk);
+                        }
+                    } catch (err) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Stream processing error:', e);
     }
 
-    // Clean markdown code block wrapper
-    let cleanSummary = summary.replace(/^```markdown\n?/i, '').replace(/\n?```$/i, '');
-
+    // Cleanup markdown code blocks if present
+    let cleanSummary = fullText.replace(/^```markdown\n?/i, '').replace(/\n?```$/i, '');
     return cleanSummary.trim();
 }
 

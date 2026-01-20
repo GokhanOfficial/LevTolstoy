@@ -1255,6 +1255,10 @@ html.light ::-webkit-scrollbar-thumb:hover {
   height: 600px;
 }
 
+.h-\[65vh\] {
+  height: 65vh;
+}
+
 .h-full {
   height: 100%;
 }

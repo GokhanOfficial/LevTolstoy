@@ -60,9 +60,10 @@ async function prepareFile(file) {
  * Birden fazla dosyayı tek bir Gemini çağrısı ile markdown'a dönüştürür
  * @param {Array} files - Multer file objects array
  * @param {string} model - Gemini model name
+ * @param {function} onChunk - Optional callback for streaming chunks
  * @returns {Promise<string>} - Birleşik markdown içeriği
  */
-async function processMultipleFiles(files, model) {
+async function processMultipleFiles(files, model, onChunk = null) {
     // Tüm dosyaları hazırla
     const preparedFiles = [];
 
@@ -72,7 +73,7 @@ async function processMultipleFiles(files, model) {
     }
 
     // Gemini ile birleşik markdown al
-    const markdown = await geminiService.convertMultipleToMarkdown(preparedFiles, model);
+    const markdown = await geminiService.convertMultipleToMarkdown(preparedFiles, model, onChunk);
 
     return markdown;
 }
