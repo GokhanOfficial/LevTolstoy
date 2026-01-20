@@ -90,13 +90,19 @@ function setView(view) {
 }
 
 /**
- * Handle convert button click
+ * Handle convert button click with task-based polling
  */
 async function handleConvert() {
-    const files = window.fileUpload?.getUploadedFiles() || [];
+    const cachedFiles = window.fileUpload?.getCachedFiles() || [];
 
-    if (files.length === 0) {
+    if (cachedFiles.length === 0) {
         showToast(window.i18n?.t('toast.noFiles') || 'Please select files first', 'error');
+        return;
+    }
+
+    // Check if files are still uploading
+    if (window.fileUpload?.isUploading()) {
+        showToast('Dosyalar yükleniyor, lütfen bekleyin...', 'info');
         return;
     }
 
@@ -110,51 +116,77 @@ async function handleConvert() {
 
     // Display file count
     document.getElementById('progress-filename').textContent =
-        files.length === 1 ? files[0].name : `${files.length} dosya`;
+        cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
 
     const progressBar = document.getElementById('progress-bar');
 
     try {
         // Update all file statuses
-        files.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'converting'));
+        cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'converting'));
 
         // Get selected model
         const modelSelect = document.getElementById('model-select');
         const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
 
-        // Send all files together
-        const result = await window.api.convertFiles(files, selectedModel, (progress) => {
-            progressBar.style.width = `${progress}%`;
-        });
+        // Start conversion task
+        const startResult = await window.api.startConversion(cachedFiles, selectedModel);
 
-        if (result.success) {
-            currentMarkdown = result.markdown;
-            currentFilename = result.filename || (files.length === 1 ? files[0].name : 'combined');
-            currentFileId = result.fileId || null;
+        if (!startResult.success) {
+            throw new Error(startResult.error);
+        }
 
-            // Update editor
-            const editor = document.getElementById('markdown-editor');
-            editor.value = currentMarkdown;
+        const taskId = startResult.taskId;
+        console.log(`🚀 Task başlatıldı: ${taskId}`);
 
-            // Update preview
-            window.preview.updatePreview(currentMarkdown);
-            window.preview.updateCharCount(currentMarkdown);
+        // Poll for status every 5 seconds
+        let completed = false;
+        while (!completed) {
+            const status = await window.api.getConversionStatus(taskId);
 
-            // Show result section
-            progressSection.classList.add('hidden');
-            resultSection.classList.remove('hidden');
+            // Update progress bar
+            progressBar.style.width = `${status.progress || 0}%`;
 
-            // Update all file statuses
-            files.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'done'));
-            showToast(window.i18n?.t('toast.conversionComplete') || 'Conversion complete!', 'success');
+            // Update preview with partial result
+            if (status.markdown) {
+                currentMarkdown = status.markdown;
+                const editor = document.getElementById('markdown-editor');
+                editor.value = currentMarkdown;
+                window.preview.updatePreview(currentMarkdown);
+            }
 
-        } else {
-            throw new Error(result.error);
+            if (status.status === 'completed') {
+                completed = true;
+                currentMarkdown = status.markdown;
+                currentFilename = cachedFiles.length === 1 ? cachedFiles[0].filename : 'combined';
+
+                // Update editor
+                const editor = document.getElementById('markdown-editor');
+                editor.value = currentMarkdown;
+
+                // Update preview
+                window.preview.updatePreview(currentMarkdown);
+                window.preview.updateCharCount(currentMarkdown);
+
+                // Show result section
+                progressSection.classList.add('hidden');
+                resultSection.classList.remove('hidden');
+
+                // Update all file statuses
+                cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'done'));
+                showToast(window.i18n?.t('toast.conversionComplete') || 'Conversion complete!', 'success');
+
+            } else if (status.status === 'failed') {
+                throw new Error(status.error || 'Conversion failed');
+
+            } else {
+                // Wait 5 seconds before next poll
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
         }
 
     } catch (error) {
         console.error('Conversion error:', error);
-        files.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'error'));
+        cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'error'));
         showToast(error.message || window.i18n?.t('toast.conversionFailed') || 'Conversion failed', 'error');
         progressSection.classList.add('hidden');
     }
@@ -305,6 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Title generation error:', error);
             await window.preview.downloadPdf(markdown, currentFilename || 'document.pdf');
         }
+    });
+
+    // Summarize button - navigate to summarizer with markdown
+    document.getElementById('summarize-btn')?.addEventListener('click', () => {
+        const markdown = document.getElementById('markdown-editor')?.value;
+        if (!markdown || markdown.trim().length === 0) {
+            showToast('Özetlenecek içerik yok', 'error');
+            return;
+        }
+        sessionStorage.setItem('summarizeMarkdown', markdown);
+        window.location.href = '/summarizer';
     });
 
     // Editor sync with preview

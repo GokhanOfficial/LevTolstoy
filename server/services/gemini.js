@@ -199,8 +199,84 @@ Dosya adı:`;
     return filename || 'document';
 }
 
+/**
+ * Summarize text using Gemini API
+ * @param {string} text - Text to summarize
+ * @param {string} model - Gemini model name
+ * @returns {Promise<string>} - Summary
+ */
+async function summarizeText(text, model = 'gemini-2.5-flash') {
+    if (!config.gemini.apiKey) {
+        throw new Error('GEMINI_API_KEY tanımlanmamış');
+    }
+
+    const baseUrl = getBaseUrl();
+    const endpoint = `${baseUrl}/models/${model}:generateContent?key=${config.gemini.apiKey}`;
+
+    const prompt = `Sen bir içerik özetleme uzmanısın. Sana verilen metni detaylı bir şekilde özetleyeceksin.
+
+## KURALLAR:
+
+1. **Başlık ve Alt Başlık Düzeni**: Başlık hiyerarşisine çok dikkat et. Ana konuları # ile, alt konuları ## ve ### ile belirt.
+
+2. **Maddeler Halinde Yaz**: Her önemli bilgiyi madde işaretleri ile listele. Okunabilirliği artır.
+
+3. **Önemsiz Detayları Kısalt**: Tekrar eden veya gereksiz bilgileri atlayabilirsin.
+
+4. **Önemli Detayları Atlama**: Kritik bilgiler, tanımlar, formüller, tarihler ve isimler mutlaka özette yer almalı.
+
+5. **Özet Tablosu**: Metnin sonunda önemli bilgileri bir tablo halinde özetle. Tabloda anahtar kavramlar ve kısa açıklamaları olsun.
+
+## FORMAT:
+
+- Markdown formatında yaz
+- Akademik ve profesyonel bir dil kullan
+- Metnin orijinal dilini koru (Türkçe → Türkçe, İngilizce → İngilizce)
+
+## METİN:
+
+${text}`;
+
+    const requestBody = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+            temperature: 0.3,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 65536
+        }
+    };
+
+    console.log(`📝 Gemini API Özetleme: ${baseUrl} | Model: ${model}`);
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error?.message || response.statusText;
+        throw new Error(`Gemini API hatası: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!summary) {
+        throw new Error('Gemini API boş yanıt döndürdü');
+    }
+
+    // Clean markdown code block wrapper
+    let cleanSummary = summary.replace(/^```markdown\n?/i, '').replace(/\n?```$/i, '');
+
+    return cleanSummary.trim();
+}
+
 module.exports = {
     convertToMarkdown,
     convertMultipleToMarkdown,
-    generateFilename
+    generateFilename,
+    summarizeText
 };

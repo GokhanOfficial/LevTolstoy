@@ -1,16 +1,16 @@
-// File Upload Handler with Drag & Drop
+// File Upload Handler with Drag & Drop and Cache Upload
 
 const SUPPORTED_EXTENSIONS = [
     '.pdf', '.pptx', '.docx', '.xlsx',
     '.png', '.jpg', '.jpeg', '.webp', '.gif',
-    '.mp3', '.wav',
-    '.txt',
-    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv'
+    '.mp3', '.wav', '.ogg',
+    '.txt', '.md',
+    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv', '.webm'
 ];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 // File state
-let uploadedFiles = [];
+let uploadedFiles = []; // Array of { file, status, progress, cacheInfo }
 
 /**
  * Get file extension icon class
@@ -21,9 +21,9 @@ function getFileIconClass(filename) {
     if (['pptx', 'ppt'].includes(ext)) return 'pptx';
     if (['docx', 'doc'].includes(ext)) return 'docx';
     if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
-    if (['mp3', 'wav'].includes(ext)) return 'audio';
-    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv'].includes(ext)) return 'video';
-    if (['txt'].includes(ext)) return 'text';
+    if (['mp3', 'wav', 'ogg'].includes(ext)) return 'audio';
+    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv', 'webm'].includes(ext)) return 'video';
+    if (['txt', 'md'].includes(ext)) return 'text';
     return 'image';
 }
 
@@ -62,22 +62,61 @@ function validateFile(file) {
 }
 
 /**
- * Add file to list
+ * Add file and start cache upload
  */
-function addFile(file) {
+async function addFile(file) {
     const validation = validateFile(file);
 
     if (!validation.valid) {
-        showToast(window.i18n.t('toast.unsupportedFormat'), 'error');
+        if (validation.error === 'tooLarge') {
+            showToast('Dosya boyutu 100 MB limitini aşıyor', 'error');
+        } else {
+            showToast(window.i18n?.t('toast.unsupportedFormat') || 'Unsupported format', 'error');
+        }
         return;
     }
 
     // Check for duplicates
-    if (uploadedFiles.some(f => f.name === file.name && f.size === file.size)) {
+    if (uploadedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
         return;
     }
 
-    uploadedFiles.push(file);
+    const fileEntry = {
+        file,
+        status: 'uploading',
+        progress: 0,
+        cacheInfo: null
+    };
+
+    uploadedFiles.push(fileEntry);
+    renderFileList();
+    updateConvertButton();
+
+    // Start cache upload
+    try {
+        const result = await window.api.uploadToCache(file, (progress) => {
+            fileEntry.progress = progress;
+            renderFileList();
+        });
+
+        if (result.success) {
+            fileEntry.status = 'ready';
+            fileEntry.cacheInfo = {
+                fileId: result.fileId,
+                url: result.url,
+                filename: result.filename,
+                mimetype: result.mimetype
+            };
+            console.log(`✅ Dosya cache'e yüklendi: ${file.name}`);
+        } else {
+            fileEntry.status = 'error';
+            showToast(result.error || 'Upload failed', 'error');
+        }
+    } catch (error) {
+        fileEntry.status = 'error';
+        showToast(error.message || 'Upload failed', 'error');
+    }
+
     renderFileList();
     updateConvertButton();
 }
@@ -92,7 +131,7 @@ function removeFile(index) {
 }
 
 /**
- * Render file list
+ * Render file list with progress
  */
 function renderFileList() {
     const fileList = document.getElementById('file-list');
@@ -103,27 +142,55 @@ function renderFileList() {
     }
 
     fileList.classList.remove('hidden');
-    fileList.innerHTML = uploadedFiles.map((file, index) => `
-    <div class="file-item" data-index="${index}">
-      <div class="flex items-center gap-3">
-        <div class="file-icon ${getFileIconClass(file.name)}">
-          ${getFileExtLabel(file.name)}
-        </div>
-        <div>
-          <p class="font-medium text-slate-200 text-sm">${file.name}</p>
-          <p class="text-xs text-slate-500">${formatFileSize(file.size)}</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="status-badge ready">${window.i18n.t('status.ready')}</span>
-        <button class="remove-file text-slate-500 hover:text-red-400 transition-colors" data-index="${index}">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-  `).join('');
+    fileList.innerHTML = uploadedFiles.map((entry, index) => {
+        const statusClass = entry.status;
+        let statusText = '';
+        let progressHtml = '';
+
+        switch (entry.status) {
+            case 'uploading':
+                statusText = `Yükleniyor... ${entry.progress}%`;
+                progressHtml = `
+                    <div class="w-20 h-1 bg-slate-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-indigo-500 transition-all" style="width: ${entry.progress}%"></div>
+                    </div>`;
+                break;
+            case 'ready':
+                statusText = window.i18n?.t('status.ready') || 'Ready';
+                break;
+            case 'converting':
+                statusText = window.i18n?.t('status.converting') || 'Converting';
+                break;
+            case 'done':
+                statusText = window.i18n?.t('status.done') || 'Done';
+                break;
+            case 'error':
+                statusText = window.i18n?.t('status.error') || 'Error';
+                break;
+        }
+
+        return `
+        <div class="file-item" data-index="${index}">
+            <div class="flex items-center gap-3">
+                <div class="file-icon ${getFileIconClass(entry.file.name)}">
+                    ${getFileExtLabel(entry.file.name)}
+                </div>
+                <div>
+                    <p class="font-medium text-slate-200 text-sm">${entry.file.name}</p>
+                    <p class="text-xs text-slate-500">${formatFileSize(entry.file.size)}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                ${progressHtml}
+                <span class="status-badge ${statusClass}">${statusText}</span>
+                <button class="remove-file text-slate-500 hover:text-red-400 transition-colors" data-index="${index}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
 
     // Add remove listeners
     fileList.querySelectorAll('.remove-file').forEach(btn => {
@@ -138,31 +205,63 @@ function renderFileList() {
  * Update file status in list
  */
 function updateFileStatus(index, status) {
-    const fileItem = document.querySelector(`.file-item[data-index="${index}"]`);
-    if (!fileItem) return;
-
-    const badge = fileItem.querySelector('.status-badge');
-    badge.className = `status-badge ${status}`;
-    badge.textContent = window.i18n.t(`status.${status}`);
+    if (uploadedFiles[index]) {
+        uploadedFiles[index].status = status;
+        renderFileList();
+    }
 }
 
 /**
- * Update convert button visibility
+ * Check if all files are ready (uploaded to cache)
+ */
+function allFilesReady() {
+    return uploadedFiles.length > 0 && uploadedFiles.every(f => f.status === 'ready');
+}
+
+/**
+ * Check if any file is still uploading
+ */
+function isUploading() {
+    return uploadedFiles.some(f => f.status === 'uploading');
+}
+
+/**
+ * Update convert button state
  */
 function updateConvertButton() {
     const convertSection = document.getElementById('convert-section');
+    const convertBtn = document.getElementById('convert-btn');
+
     if (uploadedFiles.length > 0) {
         convertSection.classList.remove('hidden');
+
+        // Disable button while uploading
+        if (isUploading()) {
+            convertBtn.disabled = true;
+            convertBtn.textContent = 'Dosyalar yükleniyor...';
+        } else if (allFilesReady()) {
+            convertBtn.disabled = false;
+            convertBtn.textContent = window.i18n?.t('convert.button') || 'Start Conversion';
+        }
     } else {
         convertSection.classList.add('hidden');
     }
 }
 
 /**
- * Get uploaded files
+ * Get cached file info for conversion (includes ready and done files)
+ */
+function getCachedFiles() {
+    return uploadedFiles
+        .filter(f => (f.status === 'ready' || f.status === 'done') && f.cacheInfo)
+        .map(f => f.cacheInfo);
+}
+
+/**
+ * Get uploaded files (raw File objects - for backwards compatibility)
  */
 function getUploadedFiles() {
-    return uploadedFiles;
+    return uploadedFiles.map(f => f.file);
 }
 
 /**
@@ -214,6 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export functions
 window.fileUpload = {
     getUploadedFiles,
+    getCachedFiles,
     clearFiles,
-    updateFileStatus
+    updateFileStatus,
+    allFilesReady,
+    isUploading
 };

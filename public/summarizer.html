@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Özetleyici - LevTolstoy</title>
+    <meta name="description" content="Markdown metinlerinizi AI ile özetleyin">
+
+    <!-- Highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- KaTeX for Math -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/pdf-preview.css">
+</head>
+
+<body class="min-h-screen bg-slate-900 text-slate-100 font-sans">
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 backdrop-blur-sm bg-slate-900/80 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h1
+                        class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        LevTolstoy
+                    </h1>
+                </a>
+
+                <!-- Navigation -->
+                <nav class="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
+                    <a href="/" class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all">
+                        Metinleştirici
+                    </a>
+                    <a href="/summarizer"
+                        class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all active">
+                        Özetleyici
+                    </a>
+                    <a href="/md-to-pdf" class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all">
+                        MD to PDF
+                    </a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+                    <svg class="w-5 h-5 sun-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <svg class="w-5 h-5 moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <section class="max-w-7xl mx-auto">
+            <!-- Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Input Panel -->
+                <div class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+                        <h2 class="font-semibold flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                </path>
+                            </svg>
+                            Metin Girişi
+                        </h2>
+                        <select id="model-select"
+                            class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="gemini-2.5-flash">Flash (Hızlı)</option>
+                            <option value="gemini-2.5-pro">Pro (Detaylı)</option>
+                        </select>
+                    </div>
+                    <textarea id="input-editor"
+                        class="w-full h-[500px] bg-transparent p-6 font-mono text-sm resize-none focus:outline-none"
+                        placeholder="Özetlenecek metni buraya yapıştırın..."></textarea>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+                        <h2 class="font-semibold flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
+                            Özet Çıktısı
+                        </h2>
+                    </div>
+                    <div id="preview-content" class="pdf-preview h-[500px] p-6 overflow-auto">
+                        <p class="text-slate-500 text-center mt-20 italic">Özet burada görünecek...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="flex items-center justify-between gap-4">
+                <!-- Progress -->
+                <div id="progress-section" class="flex-1 hidden">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500"></div>
+                        <span class="text-sm text-slate-400">Özetleniyor...</span>
+                    </div>
+                    <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="progress-bar"
+                            class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-2">
+                    <button id="copy-btn"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        Kopyala
+                    </button>
+                    <button id="download-md-btn"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        .md
+                    </button>
+                    <button id="download-pdf-btn"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        .pdf
+                    </button>
+                    <button id="summarize-btn"
+                        class="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-lg font-medium transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Özetle
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        // State
+        let currentSummary = '';
+
+        // Toast function
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Render markdown to preview
+        function renderPreview(markdown) {
+            const preview = document.getElementById('preview-content');
+            if (!markdown) {
+                preview.innerHTML = '<p class="text-slate-500 text-center mt-20 italic">Özet burada görünecek...</p>';
+                return;
+            }
+            preview.innerHTML = marked.parse(markdown);
+            preview.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(preview, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false,
+                    strict: false
+                });
+            }
+        }
+
+        // Summarize with polling
+        async function handleSummarize() {
+            const input = document.getElementById('input-editor').value.trim();
+
+            if (!input) {
+                showToast('Lütfen özetlenecek metin girin', 'error');
+                return;
+            }
+
+            const model = document.getElementById('model-select').value;
+            const summarizeBtn = document.getElementById('summarize-btn');
+            const progressSection = document.getElementById('progress-section');
+            const progressBar = document.getElementById('progress-bar');
+            const actionButtons = [
+                document.getElementById('copy-btn'),
+                document.getElementById('download-md-btn'),
+                document.getElementById('download-pdf-btn')
+            ];
+
+            summarizeBtn.disabled = true;
+            progressSection.classList.remove('hidden');
+            actionButtons.forEach(btn => btn.classList.add('hidden'));
+
+            try {
+                // Start summarization task
+                const startRes = await fetch('/api/summarize/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: input, model })
+                });
+
+                const startData = await startRes.json();
+
+                if (!startRes.ok) {
+                    throw new Error(startData.error || 'Özetleme başlatılamadı');
+                }
+
+                const taskId = startData.taskId;
+
+                // Poll for status
+                let completed = false;
+                while (!completed) {
+                    const statusRes = await fetch(`/api/summarize/status/${taskId}`);
+                    const status = await statusRes.json();
+
+                    progressBar.style.width = `${status.progress || 0}%`;
+
+                    if (status.summary) {
+                        currentSummary = status.summary;
+                        renderPreview(currentSummary);
+                    }
+
+                    if (status.status === 'completed') {
+                        completed = true;
+                        currentSummary = status.summary;
+                        renderPreview(currentSummary);
+                        progressSection.classList.add('hidden');
+                        actionButtons.forEach(btn => btn.classList.remove('hidden'));
+                        showToast('Özetleme tamamlandı!', 'success');
+                    } else if (status.status === 'failed') {
+                        throw new Error(status.error || 'Özetleme başarısız');
+                    } else {
+                        await new Promise(r => setTimeout(r, 5000));
+                    }
+                }
+
+            } catch (error) {
+                console.error('Summarize error:', error);
+                showToast(error.message || 'Özetleme hatası', 'error');
+                progressSection.classList.add('hidden');
+            }
+
+            summarizeBtn.disabled = false;
+        }
+
+        // Copy summary
+        function copySummary() {
+            if (!currentSummary) return;
+            navigator.clipboard.writeText(currentSummary);
+            showToast('Panoya kopyalandı!', 'success');
+        }
+
+        // Download MD
+        function downloadMd() {
+            if (!currentSummary) return;
+            const blob = new Blob([currentSummary], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ozet.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Download PDF
+        async function downloadPdf() {
+            if (!currentSummary) return;
+            showToast('PDF oluşturuluyor...', 'info');
+            try {
+                const res = await fetch('/api/pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: currentSummary, filename: 'ozet' })
+                });
+                const data = await res.json();
+                if (data.fileId) {
+                    window.open(`/api/download/${data.fileId}?filename=ozet.pdf`, '_blank');
+                }
+            } catch (e) {
+                showToast('PDF oluşturulamadı', 'error');
+            }
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            document.documentElement.classList.toggle('light');
+            const isLight = document.documentElement.classList.contains('light');
+            document.querySelector('.sun-icon')?.classList.toggle('hidden', !isLight);
+            document.querySelector('.moon-icon')?.classList.toggle('hidden', isLight);
+            localStorage.setItem('doc2md-theme', isLight ? 'light' : 'dark');
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load theme
+            const savedTheme = localStorage.getItem('doc2md-theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light');
+                document.querySelector('.sun-icon')?.classList.remove('hidden');
+                document.querySelector('.moon-icon')?.classList.add('hidden');
+            }
+
+            // Check for passed markdown from converter
+            const passedMarkdown = sessionStorage.getItem('summarizeMarkdown');
+            if (passedMarkdown) {
+                document.getElementById('input-editor').value = passedMarkdown;
+                sessionStorage.removeItem('summarizeMarkdown');
+            }
+
+            // Event listeners
+            document.getElementById('summarize-btn').addEventListener('click', handleSummarize);
+            document.getElementById('copy-btn').addEventListener('click', copySummary);
+            document.getElementById('download-md-btn').addEventListener('click', downloadMd);
+            document.getElementById('download-pdf-btn').addEventListener('click', downloadPdf);
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        });
+    </script>
+</body>
+
+</html>

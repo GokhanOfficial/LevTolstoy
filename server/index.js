@@ -8,6 +8,9 @@ const pdfRoutes = require('./routes/pdf');
 const downloadRoutes = require('./routes/download');
 const saveRoutes = require('./routes/save');
 const generateTitleRoutes = require('./routes/generate-title');
+const uploadRoutes = require('./routes/upload');
+const tasksRoutes = require('./routes/tasks');
+const summarizeRoutes = require('./routes/summarize');
 
 const app = express();
 
@@ -29,6 +32,9 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/download', downloadRoutes);
 app.use('/api/save', saveRoutes);
 app.use('/api/generate-title', generateTitleRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/convert', tasksRoutes);
+app.use('/api/summarize', summarizeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -38,6 +44,11 @@ app.get('/api/health', (req, res) => {
 // Serve MD to PDF editor page
 app.get('/md-to-pdf', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/md-to-pdf.html'));
+});
+
+// Serve Summarizer page
+app.get('/summarizer', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/summarizer.html'));
 });
 
 // Serve index.html for all other routes
