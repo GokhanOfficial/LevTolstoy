@@ -1339,6 +1339,18 @@ body {
   background: linear-gradient(135deg, #a855f7, #9333ea);
 }
 
+.file-item .file-icon.audio {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+}
+
+.file-item .file-icon.video {
+  background: linear-gradient(135deg, #e879f9, #c026d3);
+}
+
+.file-item .file-icon.text {
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+}
+
 .file-item .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;

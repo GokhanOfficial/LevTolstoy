@@ -1,6 +1,12 @@
 // File Upload Handler with Drag & Drop
 
-const SUPPORTED_EXTENSIONS = ['.pdf', '.pptx', '.docx', '.xlsx', '.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const SUPPORTED_EXTENSIONS = [
+    '.pdf', '.pptx', '.docx', '.xlsx',
+    '.png', '.jpg', '.jpeg', '.webp', '.gif',
+    '.mp3', '.wav',
+    '.txt',
+    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv'
+];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // File state
@@ -12,9 +18,12 @@ let uploadedFiles = [];
 function getFileIconClass(filename) {
     const ext = filename.toLowerCase().split('.').pop();
     if (ext === 'pdf') return 'pdf';
-    if (ext === 'pptx' || ext === 'ppt') return 'pptx';
-    if (ext === 'docx' || ext === 'doc') return 'docx';
-    if (ext === 'xlsx' || ext === 'xls') return 'xlsx';
+    if (['pptx', 'ppt'].includes(ext)) return 'pptx';
+    if (['docx', 'doc'].includes(ext)) return 'docx';
+    if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
+    if (['mp3', 'wav'].includes(ext)) return 'audio';
+    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv'].includes(ext)) return 'video';
+    if (['txt'].includes(ext)) return 'text';
     return 'image';
 }
 

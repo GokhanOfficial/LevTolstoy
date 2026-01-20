@@ -7,7 +7,29 @@ const SUPPORTED_FORMATS = {
         'image/png': { ext: '.png', name: 'PNG' },
         'image/jpeg': { ext: '.jpg', name: 'JPEG' },
         'image/webp': { ext: '.webp', name: 'WebP' },
-        'image/gif': { ext: '.gif', name: 'GIF' }
+        'image/gif': { ext: '.gif', name: 'GIF' },
+
+        // Audio
+        'audio/mpeg': { ext: '.mp3', name: 'MP3' },
+        'audio/mp3': { ext: '.mp3', name: 'MP3' },
+        'audio/wav': { ext: '.wav', name: 'WAV' },
+
+        // Text
+        'text/plain': { ext: '.txt', name: 'Text' },
+
+        // Video
+        'video/mov': { ext: '.mov', name: 'MOV' },
+        'video/quicktime': { ext: '.mov', name: 'MOV' },
+        'video/mpeg': { ext: '.mpeg', name: 'MPEG' },
+        'video/mpg': { ext: '.mpg', name: 'MPEG' },
+        'video/mpegps': { ext: '.mpg', name: 'MPEG-PS' },
+        'video/mp4': { ext: '.mp4', name: 'MP4' },
+        'video/avi': { ext: '.avi', name: 'AVI' },
+        'video/x-msvideo': { ext: '.avi', name: 'AVI' },
+        'video/wmv': { ext: '.wmv', name: 'WMV' },
+        'video/x-ms-wmv': { ext: '.wmv', name: 'WMV' },
+        'video/flv': { ext: '.flv', name: 'FLV' },
+        'video/x-flv': { ext: '.flv', name: 'FLV' }
     },
 
     // Google Drive ile PDF'e dönüştürülmesi gereken formatlar
