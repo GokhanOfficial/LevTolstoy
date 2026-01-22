@@ -197,6 +197,24 @@ function setLanguage(lang) {
         el.textContent = t(key);
     });
 
+    // Update placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+    });
+
+    // Update titles
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        el.title = t(key);
+    });
+
+    // Update alt text
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+        const key = el.getAttribute('data-i18n-alt');
+        el.alt = t(key);
+    });
+
     // Update language buttons
     document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.classList.toggle('active', btn.id === `lang-${lang}`);

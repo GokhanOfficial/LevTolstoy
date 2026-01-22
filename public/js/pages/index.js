@@ -85,7 +85,7 @@ const HomePage = {
 
         // Check if files are still uploading
         if (window.fileUpload?.isUploading()) {
-            window.utils.showToast('Dosyalar yükleniyor, lütfen bekleyin...', 'info');
+            window.utils.showToast(window.i18n?.t('toast.uploadingWait') || 'Dosyalar yükleniyor, lütfen bekleyin...', 'info');
             return;
         }
 
@@ -94,12 +94,14 @@ const HomePage = {
         const resultSection = document.getElementById('result-section');
         const convertBtn = document.getElementById('convert-btn');
 
-        convertBtn.disabled = true;
-        progressSection.classList.remove('hidden');
+        if (convertBtn) convertBtn.disabled = true;
+        if (progressSection) progressSection.classList.remove('hidden');
 
         // Display file count
-        document.getElementById('progress-filename').textContent =
-            cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
+        const progressFilename = document.getElementById('progress-filename');
+        if (progressFilename) {
+            progressFilename.textContent = cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
+        }
 
         const progressBar = document.getElementById('progress-bar');
 
@@ -115,18 +117,20 @@ const HomePage = {
             const startResult = await window.api.startConversion(cachedFiles, selectedModel);
 
             if (!startResult.success) {
+                // If specific error about file missing, we might want to be smart.
+                // For now, if start fails, assume files are invalid/expired.
                 throw new Error(startResult.error);
             }
 
             const taskId = startResult.taskId;
 
-            // Poll for status every 5 seconds
+            // Poll for status every 2 seconds
             let completed = false;
             while (!completed) {
                 const status = await window.api.getConversionStatus(taskId);
 
                 // Update progress bar
-                progressBar.style.width = `${status.progress || 0}%`;
+                if (progressBar) progressBar.style.width = `${status.progress || 0}%`;
 
                 // Update preview with partial result
                 if (status.markdown) {
@@ -150,8 +154,8 @@ const HomePage = {
                     window.preview.updateCharCount(status.markdown);
 
                     // Show result section
-                    progressSection.classList.add('hidden');
-                    resultSection.classList.remove('hidden');
+                    if (progressSection) progressSection.classList.add('hidden');
+                    if (resultSection) resultSection.classList.remove('hidden');
 
                     // Update all file statuses
                     cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'done'));
@@ -161,19 +165,37 @@ const HomePage = {
                     throw new Error(status.error || 'Conversion failed');
 
                 } else {
-                    // Wait 5 seconds before next poll
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Wait 2 seconds before next poll
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
 
         } catch (error) {
             console.error('Conversion error:', error);
             cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'error'));
+
             window.utils.showToast(error.message || window.i18n?.t('toast.conversionFailed') || 'Conversion failed', 'error');
-            progressSection.classList.add('hidden');
+            if (progressSection) progressSection.classList.add('hidden');
+
+            // Handling missing files / retry logic
+            // We remove the files from the UI so the user can re-upload them.
+            // Since we can't easily map back cacheInfo to index without id, we will clear all for now or improved logic.
+            // For now, simpler approach: Remove these specific files if possible. 
+            // In a real app we'd map IDs. Here, we just clear and ask user to re-add to be safe.
+
+            // However, user said "dosya silinmediyse kullanılmaya devam edilmeli". 
+            // Check if error implies file missing.
+            const isMissingFile = error.message.includes('not found') || error.message.includes('no longer exists') || error.message.includes('ENOENT');
+
+            if (isMissingFile) {
+                window.utils.showToast('Dosya sunucuda bulunamadı (zaman aşımı). Listeden kaldırıldı, lütfen tekrar yükleyin.', 'warning');
+                // For simplicity, clear list or remove specifics.
+                // Ideally we find the file that failed. Since we bundle, we might have to remove all.
+                window.fileUpload.clearFiles();
+            }
         }
 
-        convertBtn.disabled = false;
+        if (convertBtn) convertBtn.disabled = false;
     }
 };
 

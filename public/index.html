@@ -43,13 +43,14 @@
               </path>
             </svg>
           </div>
-          <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <h1
+            class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent hidden sm:block">
             LevTolstoy
           </h1>
         </a>
 
         <!-- Navigation -->
-        <nav class="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
+        <nav class="hidden md:flex items-center gap-1 bg-slate-800/50 rounded-lg p-1">
           <a href="/" class="nav-link px-3 py-1.5 rounded-md text-sm font-medium transition-all active"
             data-i18n="nav.converter">
             Metinleştirici
@@ -65,6 +66,13 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <!-- Mobile Nav Toggle -->
+        <button id="mobile-menu-btn" class="md:hidden p-2 text-slate-400 hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+          </svg>
+        </button>
+
         <!-- Language Switcher -->
         <div class="flex items-center bg-slate-800 rounded-lg p-1">
           <button id="lang-tr" class="lang-btn px-3 py-1.5 rounded-md text-sm font-medium transition-all active">
@@ -89,6 +97,16 @@
         </button>
       </div>
     </div>
+
+    <!-- Mobile Menu (Hidden by default) -->
+    <div id="mobile-menu"
+      class="hidden md:hidden border-t border-slate-700/50 bg-slate-900/95 backdrop-blur-xl absolute w-full z-40">
+      <div class="p-4 flex flex-col gap-2">
+        <a href="/" class="nav-link justify-start active" data-i18n="nav.converter">Metinleştirici</a>
+        <a href="/summarizer" class="nav-link justify-start">Özetleyici</a>
+        <a href="/md-to-pdf" class="nav-link justify-start" data-i18n="nav.editor">MD to PDF</a>
+      </div>
+    </div>
   </header>
 
   <!-- Main Content -->
@@ -97,7 +115,7 @@
     <section id="upload-section" class="max-w-4xl mx-auto mb-8">
       <!-- Drop Zone -->
       <div id="drop-zone"
-        class="drop-zone border-2 border-dashed border-slate-600 rounded-2xl p-12 text-center cursor-pointer transition-all hover:border-indigo-500 hover:bg-slate-800/50">
+        class="drop-zone border-2 border-dashed border-slate-600 rounded-2xl p-6 md:p-12 text-center cursor-pointer transition-all hover:border-indigo-500 hover:bg-slate-800/50">
         <div class="flex flex-col items-center gap-4">
           <div
             class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
@@ -131,8 +149,8 @@
         </div>
       </div>
       <input type="file" id="file-input" class="hidden"
-          accept=".pdf,.pptx,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.txt,.mov,.mpeg,.mpg,.mp4,.avi,.wmv,.flv"
-          multiple>
+        accept=".pdf,.pptx,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.txt,.mov,.mpeg,.mpg,.mp4,.avi,.wmv,.flv"
+        multiple>
 
       <!-- File List -->
       <div id="file-list" class="mt-4 space-y-2 hidden">
@@ -288,7 +306,7 @@
       </div>
 
       <!-- Content Panels -->
-      <div id="content-panels" class="grid gap-4" style="grid-template-columns: 1fr 1fr;">
+      <div id="content-panels" class="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <!-- Markdown Panel -->
         <div id="markdown-panel" class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
           <div class="p-4 border-b border-slate-700/50 flex items-center justify-between">
@@ -331,6 +349,14 @@
 
   <!-- Main App -->
   <script src="/js/app.js"></script>
+
+  <script>
+    // Mobile Menu Toggle
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    });
+  </script>
 </body>
 
 </html>

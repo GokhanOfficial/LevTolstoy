@@ -253,7 +253,7 @@ function updateConvertButton() {
  */
 function getCachedFiles() {
     return uploadedFiles
-        .filter(f => (f.status === 'ready' || f.status === 'done') && f.cacheInfo)
+        .filter(f => (f.status === 'ready' || f.status === 'done' || f.status === 'error') && f.cacheInfo)
         .map(f => f.cacheInfo);
 }
 
@@ -327,6 +327,7 @@ window.fileUpload = {
     getUploadedFiles,
     getCachedFiles,
     clearFiles,
+    removeFile,
     updateFileStatus,
     allFilesReady,
     isUploading
