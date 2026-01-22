@@ -319,17 +319,7 @@ function init(dropZone, fileInput) {
     return { dropZone: newDropZone, fileInput: newFileInput };
 }
 
-// Initialize drag & drop on load
-document.addEventListener('DOMContentLoaded', () => {
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    if (dropZone && fileInput) {
-        init(dropZone, fileInput);
-    }
 
-    // Update file list on language change
-    window.addEventListener('languageChanged', renderFileList);
-});
 
 // Export functions
 window.fileUpload = {

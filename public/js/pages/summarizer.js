@@ -36,15 +36,17 @@ const SummarizerPage = {
         const summarizeBtn = document.getElementById('summarize-btn');
         const progressSection = document.getElementById('progress-section');
         const progressBar = document.getElementById('progress-bar');
-        const actionButtons = [
-            document.getElementById('copy-btn'),
-            document.getElementById('download-md-btn'),
-            document.getElementById('download-pdf-btn')
-        ];
 
-        summarizeBtn.disabled = true;
-        progressSection.classList.remove('hidden');
-        actionButtons.forEach(btn => btn?.classList.add('hidden'));
+        // Ensure we re-query these elements as they might have lost state or class changes
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadMdBtn = document.getElementById('download-md-btn');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+        const actionButtons = [copyBtn, downloadMdBtn, downloadPdfBtn].filter(Boolean);
+
+        if (summarizeBtn) summarizeBtn.disabled = true;
+        if (progressSection) progressSection.classList.remove('hidden');
+        actionButtons.forEach(btn => btn.classList.add('hidden'));
 
         try {
             // Start summarization task
@@ -80,23 +82,29 @@ const SummarizerPage = {
                     this.currentSummary = status.summary;
                     this.currentFilename = status.filename || 'ozet';
                     this.renderPreview(this.currentSummary);
-                    progressSection.classList.add('hidden');
-                    actionButtons.forEach(btn => btn?.classList.remove('hidden'));
+
+                    if (progressSection) progressSection.classList.add('hidden');
+
+                    // Explicitly show action buttons
+                    actionButtons.forEach(btn => {
+                        if (btn) btn.classList.remove('hidden');
+                    });
+
                     window.utils.showToast(window.i18n?.t('summarizer.summaryComplete') || 'Özetleme tamamlandı!', 'success');
                 } else if (status.status === 'failed') {
                     throw new Error(status.error || window.i18n?.t('summarizer.summaryFailed') || 'Özetleme başarısız');
                 } else {
-                    await new Promise(r => setTimeout(r, 5000));
+                    await new Promise(r => setTimeout(r, 2000)); // Poll every 2s
                 }
             }
 
         } catch (error) {
             console.error('Summarize error:', error);
             window.utils.showToast(error.message || 'Özetleme hatası', 'error');
-            progressSection.classList.add('hidden');
+            if (progressSection) progressSection.classList.add('hidden');
         }
 
-        summarizeBtn.disabled = false;
+        if (summarizeBtn) summarizeBtn.disabled = false;
     },
 
     renderPreview(markdown) {
@@ -110,10 +118,17 @@ const SummarizerPage = {
         }
 
         // Use marked globally available
-        preview.innerHTML = marked.parse(markdown);
+        try {
+            preview.innerHTML = marked.parse(markdown);
+        } catch (e) {
+            console.error('Markdown parse error:', e);
+            preview.textContent = markdown;
+        }
 
         // Highlight
-        preview.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        preview.querySelectorAll('pre code').forEach(block => {
+            if (window.hljs) hljs.highlightElement(block);
+        });
 
         // Katex
         if (typeof renderMathInElement !== 'undefined') {
@@ -130,17 +145,27 @@ const SummarizerPage = {
 
     copySummary() {
         if (!this.currentSummary) return;
-        window.preview.copyToClipboard(this.currentSummary);
+        if (window.preview?.copyToClipboard) {
+            window.preview.copyToClipboard(this.currentSummary);
+        } else {
+            // Fallback
+            navigator.clipboard.writeText(this.currentSummary);
+            window.utils.showToast(window.i18n?.t('toast.copied') || 'Kopyalandı', 'success');
+        }
     },
 
     downloadMd() {
         if (!this.currentSummary) return;
-        window.preview.downloadMarkdown(this.currentSummary, `${this.currentFilename}.md`);
+        if (window.preview?.downloadMarkdown) {
+            window.preview.downloadMarkdown(this.currentSummary, `${this.currentFilename}.md`);
+        }
     },
 
     async downloadPdf() {
         if (!this.currentSummary) return;
-        await window.preview.downloadPdf(this.currentSummary, `${this.currentFilename}.pdf`);
+        if (window.preview?.downloadPdf) {
+            await window.preview.downloadPdf(this.currentSummary, `${this.currentFilename}.pdf`);
+        }
     }
 };
 
