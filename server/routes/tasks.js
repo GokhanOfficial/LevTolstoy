@@ -83,6 +83,8 @@ router.get('/status/:taskId', (req, res) => {
         status: task.status,
         markdown: task.markdown,
         progress: task.progress,
+        eta: task.eta,
+        tps: task.tps,
         error: task.error
     });
 });
@@ -122,21 +124,53 @@ async function processTask(taskId, files, model) {
 
         task.progress = 30;
 
-        // Process files with Gemini
-        // We track characters/token count to simulate percentage, or just rely on 'Processing...' state.
-        const markdown = await fileHandler.processMultipleFiles(fileBuffers, model, (chunk) => {
-            // Streaming content update
-            task.markdown += chunk;
-
-            // Artificial progress update
-            if (task.progress < 90) {
-                task.progress += 1;
+        // Encoding progress callback (30% → 60%)
+        const onEncodingProgress = (progressData) => {
+            if (progressData.type === 'encoding' && progressData.percent) {
+                // Map encoding progress to 30-60% range
+                task.progress = 30 + Math.floor(progressData.percent * 0.3);
+                task.eta = progressData.eta;
             }
-        });
+        };
+
+        // AI streaming callback (60% → 90%)
+        let streamStartTime = Date.now();
+        let totalTokens = 0;
+        let lastUpdateTime = Date.now();
+
+        const onStreamChunk = (chunk) => {
+            task.markdown += chunk;
+            totalTokens += chunk.length / 4; // Rough token estimate
+
+            const now = Date.now();
+            if (now - lastUpdateTime >= 1000) { // Update every 1 second
+                lastUpdateTime = now;
+
+                const elapsed = (now - streamStartTime) / 1000;
+                const tps = elapsed > 0 ? (totalTokens / elapsed).toFixed(1) : '0.0';
+
+                // Progress 60% → 90% based on content length (artificial)
+                if (task.progress < 90) {
+                    task.progress = Math.min(90, 60 + Math.floor(totalTokens / 100));
+                }
+
+                task.tps = tps;
+            }
+        };
+
+        // Process files with Gemini
+        const markdown = await fileHandler.processMultipleFiles(
+            fileBuffers,
+            model,
+            onStreamChunk,
+            onEncodingProgress
+        );
 
         task.markdown = markdown;
         task.progress = 100;
         task.status = TaskStatus.COMPLETED;
+        delete task.eta;
+        delete task.tps;
 
         console.log(`✅ Task tamamlandı: ${taskId}`);
 
@@ -144,6 +178,8 @@ async function processTask(taskId, files, model) {
         console.error(`❌ Task hatası (${taskId}):`, error.message);
         task.status = TaskStatus.FAILED;
         task.error = error.message;
+        delete task.eta;
+        delete task.tps;
     }
 
     // Clean up task after 30 minutes

@@ -1,0 +1,262 @@
+const ffmpeg = require('fluent-ffmpeg');
+const config = require('../config');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { Readable } = require('stream');
+const { promisify } = require('util');
+const exec = promisify(require('child_process').exec);
+
+let ffmpegAvailable = false;
+let ffmpegPath = null;
+
+const TARGET_SIZE_BYTES = 95 * 1024 * 1024;
+const GEMINI_MAX_SIZE = 100 * 1024 * 1024;
+
+async function checkFfmpeg() {
+    try {
+        const ffmpegCmd = config.ffmpeg?.path || 'ffmpeg';
+        const { stdout } = await exec(`${ffmpegCmd} -version`);
+
+        if (stdout.includes('ffmpeg version')) {
+            ffmpegAvailable = true;
+            ffmpegPath = ffmpegCmd;
+            console.log(`✅ FFmpeg bulundu: ${ffmpegCmd}`);
+            ffmpeg.setFfmpegPath(ffmpegCmd);
+            return true;
+        }
+    } catch (error) {
+        ffmpegAvailable = false;
+        console.warn(`⚠️ FFmpeg bulunamadı. M4A, Opus, MKV vb. formatlar devre dışı.`);
+    }
+    return false;
+}
+
+function isAvailable() {
+    return ffmpegAvailable;
+}
+
+function needsEncoding(mimeType) {
+    const encodeMimes = [
+        'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/opus',
+        'audio/ogg', 'audio/flac', 'audio/x-flac', 'audio/webm',
+        'video/x-matroska', 'video/3gpp', 'video/3gpp2', 'video/webm'
+    ];
+    return encodeMimes.includes(mimeType);
+}
+
+function needsCompression(fileSize) {
+    return fileSize > GEMINI_MAX_SIZE;
+}
+
+function calculateTargetBitrate(currentSize, durationSeconds, targetSize = TARGET_SIZE_BYTES) {
+    if (!durationSeconds || durationSeconds <= 0) return null;
+    const targetBitrate = Math.floor((targetSize * 8) / (durationSeconds * 1000));
+    return Math.max(32, targetBitrate);
+}
+
+function getMediaInfo(buffer) {
+    return new Promise((resolve, reject) => {
+        const stream = Readable.from(buffer);
+        ffmpeg.ffprobe(stream, (err, metadata) => {
+            if (err) return reject(err);
+            resolve({
+                duration: metadata.format.duration || 0,
+                bitrate: Math.floor((metadata.format.bit_rate || 0) / 1000)
+            });
+        });
+    });
+}
+
+function encodeAudio(buffer, fileSize, progressCallback = null) {
+    return new Promise(async (resolve, reject) => {
+        const tempDir = os.tmpdir();
+        const inputPath = path.join(tempDir, `ffmpeg-input-${Date.now()}.tmp`);
+        const outputPath = path.join(tempDir, `ffmpeg-output-${Date.now()}.mp3`);
+
+        let startTime = Date.now();
+        let lastProgressTime = 0;
+
+        try {
+            fs.writeFileSync(inputPath, buffer);
+            let targetBitrate = 128;
+
+            if (fileSize > GEMINI_MAX_SIZE) {
+                try {
+                    const info = await getMediaInfo(buffer);
+                    const calculatedBitrate = calculateTargetBitrate(fileSize, info.duration);
+                    if (calculatedBitrate) targetBitrate = Math.min(calculatedBitrate, 128);
+                } catch (e) { }
+            }
+
+            ffmpeg(inputPath)
+                .audioCodec('libmp3lame')
+                .audioBitrate(targetBitrate)
+                .audioChannels(2)
+                .audioFrequency(44100)
+                .format('mp3')
+                .on('start', () => { startTime = Date.now(); })
+                .on('progress', (progress) => {
+                    const now = Date.now();
+                    if (now - lastProgressTime < 1000) return;
+                    lastProgressTime = now;
+
+                    const percent = progress.percent || 0;
+                    const elapsed = (now - startTime) / 1000;
+                    const eta = percent > 0 ? Math.round((elapsed / percent) * (100 - percent)) : null;
+
+                    if (progressCallback) {
+                        progressCallback({
+                            percent: Math.min(Math.max(percent, 0), 100),
+                            eta,
+                            type: 'encoding'
+                        });
+                    }
+                })
+                .on('error', (err) => {
+                    try { fs.unlinkSync(inputPath); } catch (e) { }
+                    try { fs.unlinkSync(outputPath); } catch (e) { }
+                    reject(new Error(`Audio encoding failed: ${err.message}`));
+                })
+                .on('end', () => {
+                    try {
+                        const outputBuffer = fs.readFileSync(outputPath);
+                        fs.unlinkSync(inputPath);
+                        fs.unlinkSync(outputPath);
+
+                        if (outputBuffer.length > GEMINI_MAX_SIZE) {
+                            reject(new Error(`Encoded file still too large: ${(outputBuffer.length / 1024 / 1024).toFixed(1)}MB`));
+                        } else {
+                            resolve(outputBuffer);
+                        }
+                    } catch (err) {
+                        try { fs.unlinkSync(inputPath); } catch (e) { }
+                        try { fs.unlinkSync(outputPath); } catch (e) { }
+                        reject(err);
+                    }
+                })
+                .save(outputPath);
+
+        } catch (error) {
+            try { fs.unlinkSync(inputPath); } catch (e) { }
+            try { fs.unlinkSync(outputPath); } catch (e) { }
+            reject(error);
+        }
+    });
+}
+
+function encodeVideo(buffer, fileSize, progressCallback = null) {
+    return new Promise(async (resolve, reject) => {
+        const tempDir = os.tmpdir();
+        const inputPath = path.join(tempDir, `ffmpeg-input-${Date.now()}.tmp`);
+        const outputPath = path.join(tempDir, `ffmpeg-output-${Date.now()}.mp4`);
+
+        let startTime = Date.now();
+        let lastProgressTime = 0;
+
+        try {
+            fs.writeFileSync(inputPath, buffer);
+            let videoBitrate = '1000k';
+            let audioBitrate = '128k';
+            let crf = 23;
+
+            if (fileSize > GEMINI_MAX_SIZE) {
+                try {
+                    const info = await getMediaInfo(buffer);
+                    const calculatedBitrate = calculateTargetBitrate(fileSize, info.duration);
+                    if (calculatedBitrate) {
+                        videoBitrate = `${Math.max(500, Math.floor(calculatedBitrate * 0.9))}k`;
+                        audioBitrate = '96k';
+                        crf = 28;
+                    }
+                } catch (e) { }
+            }
+
+            ffmpeg(inputPath)
+                .videoCodec('libx264')
+                .videoBitrate(videoBitrate)
+                .outputOptions([`-crf ${crf}`, '-preset fast', '-movflags +faststart'])
+                .audioCodec('aac')
+                .audioBitrate(audioBitrate)
+                .format('mp4')
+                .on('start', () => { startTime = Date.now(); })
+                .on('progress', (progress) => {
+                    const now = Date.now();
+                    if (now - lastProgressTime < 1000) return;
+                    lastProgressTime = now;
+
+                    const percent = progress.percent || 0;
+                    const elapsed = (now - startTime) / 1000;
+                    const eta = percent > 0 ? Math.round((elapsed / percent) * (100 - percent)) : null;
+
+                    if (progressCallback) {
+                        progressCallback({
+                            percent: Math.min(Math.max(percent, 0), 100),
+                            eta,
+                            type: 'encoding'
+                        });
+                    }
+                })
+                .on('error', (err) => {
+                    try { fs.unlinkSync(inputPath); } catch (e) { }
+                    try { fs.unlinkSync(outputPath); } catch (e) { }
+                    reject(new Error(`Video encoding failed: ${err.message}`));
+                })
+                .on('end', () => {
+                    try {
+                        const outputBuffer = fs.readFileSync(outputPath);
+                        fs.unlinkSync(inputPath);
+                        fs.unlinkSync(outputPath);
+
+                        if (outputBuffer.length > GEMINI_MAX_SIZE) {
+                            reject(new Error(`Encoded video still too large: ${(outputBuffer.length / 1024 / 1024).toFixed(1)}MB`));
+                        } else {
+                            resolve(outputBuffer);
+                        }
+                    } catch (err) {
+                        try { fs.unlinkSync(inputPath); } catch (e) { }
+                        try { fs.unlinkSync(outputPath); } catch (e) { }
+                        reject(err);
+                    }
+                })
+                .save(outputPath);
+
+        } catch (error) {
+            try { fs.unlinkSync(inputPath); } catch (e) { }
+            try { fs.unlinkSync(outputPath); } catch (e) { }
+            reject(error);
+        }
+    });
+}
+
+async function encodeMedia(buffer, mimeType, fileSize, progressCallback = null) {
+    if (!ffmpegAvailable) {
+        throw new Error('FFmpeg is not available. Cannot encode media files.');
+    }
+
+    let outputBuffer;
+    let outputMime;
+
+    if (mimeType.startsWith('audio/')) {
+        outputBuffer = await encodeAudio(buffer, fileSize, progressCallback);
+        outputMime = 'audio/mpeg';
+    } else if (mimeType.startsWith('video/')) {
+        outputBuffer = await encodeVideo(buffer, fileSize, progressCallback);
+        outputMime = 'video/mp4';
+    } else {
+        throw new Error(`Unsupported media type for encoding: ${mimeType}`);
+    }
+
+    return {
+        buffer: outputBuffer,
+        mimeType: outputMime
+    };
+}
+
+module.exports = {
+    checkFfmpeg,
+    isAvailable,
+    needsEncoding,
+    needsCompression,
+    encodeMedia
+};

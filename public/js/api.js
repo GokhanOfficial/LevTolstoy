@@ -98,6 +98,8 @@ async function getConversionStatus(taskId) {
             status: data.status,
             markdown: data.markdown,
             progress: data.progress,
+            eta: data.eta,
+            tps: data.tps,
             error: data.error
         };
 

@@ -4,11 +4,26 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const mimeTypes = require('../utils/mimeTypes');
+const mediaEncoder = require('../services/mediaEncoder');
 
 // Cache directory
 const CACHE_DIR = path.join(__dirname, '../../public/cache');
 const CACHE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
+// File size limits
+const MAX_FILE_SIZE_DEFAULT = 100 * 1024 * 1024; // 100 MB (documents, images)
+const MAX_FILE_SIZE_MEDIA = 250 * 1024 * 1024;   // 250 MB (audio/video)
+
+/**
+ * Get max file size based on MIME type
+ */
+function getMaxFileSize(mimeType) {
+    if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
+        return MAX_FILE_SIZE_MEDIA;
+    }
+    return MAX_FILE_SIZE_DEFAULT;
+}
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
@@ -30,36 +45,41 @@ const storage = multer.diskStorage({
     }
 });
 
+/**
+ * Build allowed types list based on FFmpeg availability
+ */
+function getAllowedTypes() {
+    const types = [...mimeTypes.ALL_SUPPORTED_MIMES];
+
+    // If FFmpeg is not available, remove encode formats
+    if (!mediaEncoder.isAvailable()) {
+        const encodeFormats = Object.keys(mimeTypes.SUPPORTED_FORMATS.encode);
+        return types.filter(t => !encodeFormats.includes(t));
+    }
+
+    return types;
+}
+
 const upload = multer({
     storage,
     limits: {
-        fileSize: MAX_FILE_SIZE
+        fileSize: MAX_FILE_SIZE_MEDIA // Use max limit, we'll check per-type later
     },
     fileFilter: (req, file, cb) => {
-        // Accept common document types
-        const allowedTypes = [
-            'application/pdf',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'audio/mpeg',
-            'audio/wav',
-            'audio/ogg',
-            'video/mp4',
-            'video/webm',
-            'text/plain',
-            'text/markdown'
-        ];
+        const allowedTypes = getAllowedTypes();
+        const maxSize = getMaxFileSize(file.mimetype);
 
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error(`Desteklenmeyen dosya türü: ${file.mimetype}`), false);
+        if (!allowedTypes.includes(file.mimetype)) {
+            return cb(new Error(`Desteklenmeyen dosya türü: ${file.mimetype}`), false);
         }
+
+        // Note: Multer checks size automatically, but we log the limit
+        if (req.headers['content-length'] && parseInt(req.headers['content-length']) > maxSize) {
+            const limitMB = Math.floor(maxSize / 1024 / 1024);
+            return cb(new Error(`Dosya boyutu ${limitMB} MB limitini aşıyor`), false);
+        }
+
+        cb(null, true);
     }
 });
 
@@ -149,7 +169,7 @@ router.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
-                error: 'Dosya boyutu 100 MB limitini aşıyor',
+                error: 'Dosya boyutu limiti aşıyor (Dökümanlar: 100 MB, Ses/Video: 250 MB)',
                 errorKey: 'errors.fileTooLarge'
             });
         }

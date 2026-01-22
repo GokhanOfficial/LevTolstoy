@@ -58,14 +58,44 @@ const SUPPORTED_FORMATS = {
             ext: '.doc',
             name: 'Word (Legacy)',
             googleMime: 'application/vnd.google-apps.document'
+        },
+        'application/vnd.ms-excel': {
+            ext: '.xls',
+            name: 'Excel (Legacy)',
+            googleMime: 'application/vnd.google-apps.spreadsheet'
+        },
+        'text/csv': {
+            ext: '.csv',
+            name: 'CSV',
+            googleMime: 'application/vnd.google-apps.spreadsheet'
         }
+    },
+
+    // FFmpeg ile encode edilmesi gereken formatlar
+    encode: {
+        // Audio - encode to MP3
+        'audio/m4a': { ext: '.m4a', name: 'M4A', targetMime: 'audio/mpeg' },
+        'audio/x-m4a': { ext: '.m4a', name: 'M4A', targetMime: 'audio/mpeg' },
+        'audio/aac': { ext: '.aac', name: 'AAC', targetMime: 'audio/mpeg' },
+        'audio/opus': { ext: '.opus', name: 'Opus', targetMime: 'audio/mpeg' },
+        'audio/ogg': { ext: '.ogg', name: 'OGG', targetMime: 'audio/mpeg' },
+        'audio/flac': { ext: '.flac', name: 'FLAC', targetMime: 'audio/mpeg' },
+        'audio/x-flac': { ext: '.flac', name: 'FLAC', targetMime: 'audio/mpeg' },
+        'audio/webm': { ext: '.weba', name: 'WebM Audio', targetMime: 'audio/mpeg' },
+
+        // Video - encode to MP4
+        'video/x-matroska': { ext: '.mkv', name: 'MKV', targetMime: 'video/mp4' },
+        'video/3gpp': { ext: '.3gp', name: '3GP', targetMime: 'video/mp4' },
+        'video/3gpp2': { ext: '.3g2', name: '3G2', targetMime: 'video/mp4' },
+        'video/webm': { ext: '.webm', name: 'WebM', targetMime: 'video/mp4' }
     }
 };
 
 // Tüm desteklenen MIME tipleri
 const ALL_SUPPORTED_MIMES = [
     ...Object.keys(SUPPORTED_FORMATS.direct),
-    ...Object.keys(SUPPORTED_FORMATS.convert)
+    ...Object.keys(SUPPORTED_FORMATS.convert),
+    ...Object.keys(SUPPORTED_FORMATS.encode)
 ];
 
 // Dosya uzantılarından MIME tipi bulma
@@ -74,6 +104,9 @@ Object.entries(SUPPORTED_FORMATS.direct).forEach(([mime, info]) => {
     EXTENSION_TO_MIME[info.ext] = mime;
 });
 Object.entries(SUPPORTED_FORMATS.convert).forEach(([mime, info]) => {
+    EXTENSION_TO_MIME[info.ext] = mime;
+});
+Object.entries(SUPPORTED_FORMATS.encode).forEach(([mime, info]) => {
     EXTENSION_TO_MIME[info.ext] = mime;
 });
 
@@ -99,10 +132,20 @@ function needsConversion(mimeType) {
 }
 
 /**
+ * MIME tipinin encoding gerektirip gerektirmediğini kontrol eder
+ */
+function needsEncoding(mimeType) {
+    return mimeType in SUPPORTED_FORMATS.encode;
+}
+
+/**
  * Format bilgisini döndürür
  */
 function getFormatInfo(mimeType) {
-    return SUPPORTED_FORMATS.direct[mimeType] || SUPPORTED_FORMATS.convert[mimeType] || null;
+    return SUPPORTED_FORMATS.direct[mimeType] ||
+        SUPPORTED_FORMATS.convert[mimeType] ||
+        SUPPORTED_FORMATS.encode[mimeType] ||
+        null;
 }
 
 module.exports = {
@@ -112,5 +155,6 @@ module.exports = {
     isSupported,
     isDirect,
     needsConversion,
+    needsEncoding,
     getFormatInfo
 };

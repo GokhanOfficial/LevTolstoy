@@ -132,6 +132,21 @@ const HomePage = {
                 // Update progress bar
                 if (progressBar) progressBar.style.width = `${status.progress || 0}%`;
 
+                // Update progress text with ETA and TPS
+                if (progressFilename) {
+                    let progressText = cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
+
+                    if (status.eta) {
+                        progressText += ` • ETA: ${status.eta}s`;
+                    }
+
+                    if (status.tps) {
+                        progressText += ` • ${status.tps} tok/s`;
+                    }
+
+                    progressFilename.textContent = progressText;
+                }
+
                 // Update preview with partial result
                 if (status.markdown) {
                     window.app.currentMarkdown = status.markdown;
@@ -165,8 +180,8 @@ const HomePage = {
                     throw new Error(status.error || 'Conversion failed');
 
                 } else {
-                    // Wait 2 seconds before next poll
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Wait 1 second before next poll
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 

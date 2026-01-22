@@ -12,6 +12,7 @@ function analyzeFile(mimeType) {
         supported: mimeTypes.isSupported(mimeType),
         direct: mimeTypes.isDirect(mimeType),
         needsConversion: mimeTypes.needsConversion(mimeType),
+        needsEncoding: mimeTypes.needsEncoding(mimeType),
         formatInfo: mimeTypes.getFormatInfo(mimeType)
     };
 }
@@ -21,7 +22,7 @@ function analyzeFile(mimeType) {
  * @param {object} file - Multer file object
  * @returns {Promise<{buffer: Buffer, mimeType: string, name: string}>}
  */
-async function prepareFile(file) {
+async function prepareFile(file, progressCallback = null) {
     const { buffer, mimetype, originalname } = file;
     const analysis = analyzeFile(mimetype);
 
@@ -49,6 +50,24 @@ async function prepareFile(file) {
         processMimeType = 'application/pdf';
     }
 
+    // Media dosyaları için FFmpeg ile encode et
+    if (analysis.needsEncoding) {
+        const mediaEncoder = require('./mediaEncoder');
+
+        if (!mediaEncoder.isAvailable()) {
+            throw new Error(
+                `${analysis.formatInfo.name} dosyaları için FFmpeg gerekli. ` +
+                'FFmpeg kurulu değil veya bulunamıyor.'
+            );
+        }
+
+        console.log(`🔄 Encoding: ${originalname} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+
+        const encoded = await mediaEncoder.encodeMedia(buffer, mimetype, buffer.length, progressCallback);
+        processBuffer = encoded.buffer;
+        processMimeType = encoded.mimeType;
+    }
+
     return {
         buffer: processBuffer,
         mimeType: processMimeType,
@@ -63,12 +82,12 @@ async function prepareFile(file) {
  * @param {function} onChunk - Optional callback for streaming chunks
  * @returns {Promise<string>} - Birleşik markdown içeriği
  */
-async function processMultipleFiles(files, model, onChunk = null) {
+async function processMultipleFiles(files, model, onChunk = null, onProgress = null) {
     // Tüm dosyaları hazırla
     const preparedFiles = [];
 
     for (const file of files) {
-        const prepared = await prepareFile(file);
+        const prepared = await prepareFile(file, onProgress);
         preparedFiles.push(prepared);
     }
 

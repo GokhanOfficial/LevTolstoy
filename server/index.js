@@ -72,10 +72,14 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(config.port, () => {
+app.listen(config.port, async () => {
     console.log(`🚀 Doc2MD sunucusu http://localhost:${config.port} adresinde çalışıyor`);
 
     if (!config.gemini.apiKey) {
         console.warn('⚠️  GEMINI_API_KEY tanımlanmamış!');
     }
+
+    // Check FFmpeg availability
+    const mediaEncoder = require('./services/mediaEncoder');
+    await mediaEncoder.checkFfmpeg();
 });

@@ -16,5 +16,10 @@ module.exports = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     pdfFolderId: process.env.GOOGLE_DRIVE_PDF_FOLDER_ID,
     mdFolderId: process.env.GOOGLE_DRIVE_MD_FOLDER_ID
+  },
+
+  ffmpeg: {
+    path: process.env.FFMPEG_PATH || 'ffmpeg',
+    maxEncodingTimeMs: 5 * 60 * 1000, // 5 min timeout
   }
 };

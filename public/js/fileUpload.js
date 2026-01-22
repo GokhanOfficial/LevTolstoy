@@ -1,13 +1,14 @@
 // File Upload Handler with Drag & Drop and Cache Upload
 
 const SUPPORTED_EXTENSIONS = [
-    '.pdf', '.pptx', '.docx', '.xlsx',
+    '.pdf', '.pptx', '.docx', '.xlsx', '.ppt', '.doc', '.xls', '.csv',
     '.png', '.jpg', '.jpeg', '.webp', '.gif',
-    '.mp3', '.wav', '.ogg',
+    '.mp3', '.wav', '.ogg', '.m4a', '.opus', '.aac', '.flac', '.weba',
     '.txt', '.md',
-    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv', '.webm'
+    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv', '.webm', '.mkv', '.3gp', '.3g2'
 ];
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE_DEFAULT = 100 * 1024 * 1024; // 100MB for documents
+const MAX_FILE_SIZE_MEDIA = 250 * 1024 * 1024;   // 250MB for audio/video
 
 // File state
 let uploadedFiles = []; // Array of { file, status, progress, cacheInfo }
@@ -20,9 +21,9 @@ function getFileIconClass(filename) {
     if (ext === 'pdf') return 'pdf';
     if (['pptx', 'ppt'].includes(ext)) return 'pptx';
     if (['docx', 'doc'].includes(ext)) return 'docx';
-    if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
-    if (['mp3', 'wav', 'ogg'].includes(ext)) return 'audio';
-    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv', 'webm'].includes(ext)) return 'video';
+    if (['xlsx', 'xls', 'csv'].includes(ext)) return 'xlsx';
+    if (['mp3', 'wav', 'ogg', 'm4a', 'opus', 'aac', 'flac', 'weba'].includes(ext)) return 'audio';
+    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv', 'webm', 'mkv', '3gp', '3g2'].includes(ext)) return 'video';
     if (['txt', 'md'].includes(ext)) return 'text';
     return 'image';
 }
@@ -45,6 +46,16 @@ function formatFileSize(bytes) {
 }
 
 /**
+ * Get max file size for a given file
+ */
+function getMaxFileSize(file) {
+    const ext = '.' + file.name.toLowerCase().split('.').pop();
+    const mediaExts = ['.mp3', '.wav', '.ogg', '.m4a', '.opus', '.aac', '.flac', '.weba',
+        '.mp4', '.mov', '.mpeg', '.mpg', '.avi', '.wmv', '.flv', '.webm', '.mkv', '.3gp', '.3g2'];
+    return mediaExts.includes(ext) ? MAX_FILE_SIZE_MEDIA : MAX_FILE_SIZE_DEFAULT;
+}
+
+/**
  * Validate file
  */
 function validateFile(file) {
@@ -54,8 +65,9 @@ function validateFile(file) {
         return { valid: false, error: 'unsupported' };
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-        return { valid: false, error: 'tooLarge' };
+    const maxSize = getMaxFileSize(file);
+    if (file.size > maxSize) {
+        return { valid: false, error: 'tooLarge', maxSize };
     }
 
     return { valid: true };
@@ -69,7 +81,8 @@ async function addFile(file) {
 
     if (!validation.valid) {
         if (validation.error === 'tooLarge') {
-            showToast('Dosya boyutu 100 MB limitini aşıyor', 'error');
+            const limitMB = Math.floor(validation.maxSize / 1024 / 1024);
+            showToast(`Dosya boyutu ${limitMB} MB limitini aşıyor`, 'error');
         } else {
             showToast(window.i18n?.t('toast.unsupportedFormat') || 'Unsupported format', 'error');
         }
