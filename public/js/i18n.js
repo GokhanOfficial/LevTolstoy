@@ -215,10 +215,8 @@ function setLanguage(lang) {
         el.alt = t(key);
     });
 
-    // Update language buttons
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.id === `lang-${lang}`);
-    });
+    // Update language button icon
+    updateLanguageIcon(lang);
 
     // Update html lang attribute
     document.documentElement.lang = lang;
@@ -236,13 +234,32 @@ function getLanguage() {
 
 // Initialize language on load
 document.addEventListener('DOMContentLoaded', () => {
-    // Set up language switcher buttons
-    document.getElementById('lang-tr')?.addEventListener('click', () => setLanguage('tr'));
-    document.getElementById('lang-en')?.addEventListener('click', () => setLanguage('en'));
+    // Set up language switcher button
+    const langToggle = document.getElementById('lang-toggle');
+    if (langToggle) {
+        langToggle.addEventListener('click', () => {
+            const nextLang = currentLang === 'tr' ? 'en' : 'tr';
+            setLanguage(nextLang);
+        });
+    }
 
     // Apply saved language
     setLanguage(currentLang);
 });
+
+function updateLanguageIcon(lang) {
+    const btn = document.getElementById('lang-toggle');
+    if (!btn) return;
+
+    // Update content with flag
+    if (lang === 'tr') {
+        btn.innerHTML = '<span class="text-lg" role="img" aria-label="TR">🇹🇷</span>';
+        btn.title = 'Türkçe';
+    } else {
+        btn.innerHTML = '<span class="text-lg" role="img" aria-label="EN">🇬🇧</span>';
+        btn.title = 'English';
+    }
+}
 
 // Export for use in other modules
 window.i18n = { t, setLanguage, getLanguage };
