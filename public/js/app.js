@@ -37,6 +37,23 @@ const App = {
         // Prevent default drag/drop handler on window
         window.addEventListener('dragover', e => e.preventDefault(), false);
         window.addEventListener('drop', e => e.preventDefault(), false);
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Close menu when clicking a link
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+        }
     },
 
     // Shared Methods (download logic etc.)

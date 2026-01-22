@@ -98,6 +98,11 @@ const Router = {
         if (matchedKey && this.routes[matchedKey]) {
             console.log('Mounting page:', matchedKey);
             this.routes[matchedKey].mount();
+
+            // Re-apply translations for new content
+            if (window.i18n) {
+                window.i18n.setLanguage(window.i18n.getLanguage());
+            }
         }
     },
 
