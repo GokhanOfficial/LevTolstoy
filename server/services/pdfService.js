@@ -1,4 +1,5 @@
 const { mdToPdf } = require('md-to-pdf');
+const { PDFDocument } = require('pdf-lib');
 const crypto = require('crypto');
 const config = require('../config');
 const googleDriveService = require('./googleDrive');
@@ -91,6 +92,43 @@ hr {
 `;
 
 /**
+ * Extract metadata from markdown content
+ * @param {string} markdown - Markdown content
+ * @param {string} filename - Original filename
+ * @returns {object} - Metadata object with title, subject, keywords, etc.
+ */
+function extractMetadata(markdown, filename) {
+  // Extract first H1 heading as title
+  const h1Match = markdown.match(/^#\s+(.+)$/m);
+  const title = h1Match ? h1Match[1].trim() :
+    (filename && filename !== 'document' ? filename.replace(/\.pdf$/i, '') : 'LevTolstoy Dönüştürme');
+
+  // Extract first paragraph as subject (max 200 chars)
+  const firstParagraph = markdown
+    .replace(/^#+\s+.+$/gm, '') // Remove headings
+    .trim()
+    .split('\n\n')[0];
+  const subject = firstParagraph ?
+    firstParagraph.substring(0, 200).trim() + (firstParagraph.length > 200 ? '...' : '') :
+    'LevTolstoy ile dönüştürülmüş doküman';
+
+  // Extract keywords from H2 and H3 headings (first 5)
+  const headings = [...markdown.matchAll(/^#{2,3}\s+(.+)$/gm)]
+    .map(m => m[1].trim())
+    .slice(0, 5);
+  const keywords = headings.length > 0 ? headings.join(', ') : 'LevTolstoy, Markdown, AI';
+
+  return {
+    title,
+    subject,
+    keywords,
+    author: 'LevTolstoy AI',
+    creator: 'LevTolstoy AI',
+    producer: 'LevTolstoy PDF Service'
+  };
+}
+
+/**
  * Pre-process markdown for PDF generation:
  * 1. Render Math (LaTeX) to HTML on server-side using KaTeX
  * 2. Escape < followed by number in text parts
@@ -135,9 +173,13 @@ function preprocessMarkdown(markdown) {
 /**
  * Convert markdown to PDF buffer using md-to-pdf
  * @param {string} markdown - Markdown content
+ * @param {string} filename - Original filename for metadata
  * @returns {Promise<Buffer>} - PDF buffer
  */
-async function generatePdf(markdown) {
+async function generatePdf(markdown, filename = 'document') {
+  // Extract metadata from markdown
+  const metadata = extractMetadata(markdown, filename);
+
   // Pre-process markdown (SSR Math + Escaping)
   const safeMarkdown = preprocessMarkdown(markdown);
 
@@ -180,7 +222,22 @@ async function generatePdf(markdown) {
     throw new Error('PDF generation failed');
   }
 
-  return result.content;
+  // Load PDF with pdf-lib to add metadata
+  const pdfDoc = await PDFDocument.load(result.content);
+
+  // Set metadata
+  pdfDoc.setTitle(metadata.title);
+  pdfDoc.setSubject(metadata.subject);
+  pdfDoc.setKeywords([metadata.keywords]);
+  pdfDoc.setAuthor(metadata.author);
+  pdfDoc.setCreator(metadata.creator);
+  pdfDoc.setProducer(metadata.producer);
+  pdfDoc.setCreationDate(new Date());
+  pdfDoc.setModificationDate(new Date());
+
+  // Save and return as Buffer
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 /**

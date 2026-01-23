@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
         console.log(`📄 PDF oluşturuluyor: ${filename}`);
 
         // Generate PDF
-        const pdfBuffer = await pdfService.generatePdf(markdown);
+        const pdfBuffer = await pdfService.generatePdf(markdown, filename);
 
         console.log(`📤 Google Drive\'a yükleniyor...`);
 
