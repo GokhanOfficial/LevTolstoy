@@ -4,8 +4,7 @@ const SUPPORTED_EXTENSIONS = [
     '.pdf', '.pptx', '.docx', '.xlsx',
     '.png', '.jpg', '.jpeg', '.webp', '.gif',
     '.mp3', '.wav', '.ogg',
-    '.txt', '.md',
-    '.mov', '.mpeg', '.mpg', '.mp4', '.avi', '.wmv', '.flv', '.webm'
+    '.txt', '.md'
 ];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
@@ -22,7 +21,6 @@ function getFileIconClass(filename) {
     if (['docx', 'doc'].includes(ext)) return 'docx';
     if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
     if (['mp3', 'wav', 'ogg'].includes(ext)) return 'audio';
-    if (['mp4', 'mov', 'mpeg', 'mpg', 'avi', 'wmv', 'flv', 'webm'].includes(ext)) return 'video';
     if (['txt', 'md'].includes(ext)) return 'text';
     return 'image';
 }

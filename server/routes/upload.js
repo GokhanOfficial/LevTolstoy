@@ -49,8 +49,6 @@ const upload = multer({
             'audio/mpeg',
             'audio/wav',
             'audio/ogg',
-            'video/mp4',
-            'video/webm',
             'text/plain',
             'text/markdown'
         ];

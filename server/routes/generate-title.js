@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const geminiService = require('../services/gemini');
+const openaiService = require('../services/openai');
 
 // POST /api/generate-title - Generate a title from markdown content
 router.post('/', async (req, res) => {
@@ -16,7 +16,7 @@ router.post('/', async (req, res) => {
 
         console.log('🏷️ Başlık üretiliyor...');
 
-        const title = await geminiService.generateFilename(markdown, model);
+        const title = await openaiService.generateFilename(markdown, model);
 
         res.json({
             success: true,

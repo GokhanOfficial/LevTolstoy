@@ -1,7 +1,7 @@
-// Desteklenen dosya formatları
+// Desteklenen dosya formatları (Video formatları OpenAI API'de desteklenmediği için kaldırıldı)
 
 const SUPPORTED_FORMATS = {
-    // Direkt Gemini'ye gönderilebilen formatlar
+    // Direkt API'ye gönderilebilen formatlar
     direct: {
         'application/pdf': { ext: '.pdf', name: 'PDF' },
         'image/png': { ext: '.png', name: 'PNG' },
@@ -15,21 +15,7 @@ const SUPPORTED_FORMATS = {
         'audio/wav': { ext: '.wav', name: 'WAV' },
 
         // Text
-        'text/plain': { ext: '.txt', name: 'Text' },
-
-        // Video
-        'video/mov': { ext: '.mov', name: 'MOV' },
-        'video/quicktime': { ext: '.mov', name: 'MOV' },
-        'video/mpeg': { ext: '.mpeg', name: 'MPEG' },
-        'video/mpg': { ext: '.mpg', name: 'MPEG' },
-        'video/mpegps': { ext: '.mpg', name: 'MPEG-PS' },
-        'video/mp4': { ext: '.mp4', name: 'MP4' },
-        'video/avi': { ext: '.avi', name: 'AVI' },
-        'video/x-msvideo': { ext: '.avi', name: 'AVI' },
-        'video/wmv': { ext: '.wmv', name: 'WMV' },
-        'video/x-ms-wmv': { ext: '.wmv', name: 'WMV' },
-        'video/flv': { ext: '.flv', name: 'FLV' },
-        'video/x-flv': { ext: '.flv', name: 'FLV' }
+        'text/plain': { ext: '.txt', name: 'Text' }
     },
 
     // Google Drive ile PDF'e dönüştürülmesi gereken formatlar

@@ -1,5 +1,5 @@
 const mimeTypes = require('../utils/mimeTypes');
-const geminiService = require('./gemini');
+const openaiService = require('./openai');
 const googleDriveService = require('./googleDrive');
 
 /**
@@ -72,8 +72,8 @@ async function processMultipleFiles(files, model, onChunk = null) {
         preparedFiles.push(prepared);
     }
 
-    // Gemini ile birleşik markdown al
-    const markdown = await geminiService.convertMultipleToMarkdown(preparedFiles, model, onChunk);
+    // OpenAI ile birleşik markdown al
+    const markdown = await openaiService.convertMultipleToMarkdown(preparedFiles, model, onChunk);
 
     return markdown;
 }

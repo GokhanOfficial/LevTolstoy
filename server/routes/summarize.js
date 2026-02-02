@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const gemini = require('../services/gemini');
+const openai = require('../services/openai');
 
 // In-memory task store
 const tasks = new Map();
@@ -38,7 +38,7 @@ router.post('/start', async (req, res) => {
             progress: 0,
             error: null,
             createdAt: Date.now(),
-            model: model || 'gemini-2.5-flash'
+            model: model || 'gpt-4o'
         };
 
         tasks.set(taskId, task);
@@ -88,7 +88,7 @@ router.get('/status/:taskId', (req, res) => {
 });
 
 /**
- * Process summarization in background using gemini service
+ * Process summarization in background using openai service
  */
 async function processSummarization(taskId, markdown, model) {
     const task = tasks.get(taskId);
@@ -98,8 +98,8 @@ async function processSummarization(taskId, markdown, model) {
         task.status = TaskStatus.PROCESSING;
         task.progress = 10; // Started
 
-        // Use gemini service to summarize with streaming callback
-        const summary = await gemini.summarizeText(markdown, model, (chunk) => {
+        // Use openai service to summarize with streaming callback
+        const summary = await openai.summarizeText(markdown, model, (chunk) => {
             // Update task with new chunk
             task.summary += chunk;
 
@@ -117,7 +117,7 @@ async function processSummarization(taskId, markdown, model) {
 
         // Generate filename from summary content
         try {
-            task.filename = await gemini.generateFilename(summary, model);
+            task.filename = await openai.generateFilename(summary, model);
             console.log(`🏷️ Özet dosya adı: ${task.filename}`);
         } catch (filenameError) {
             console.warn('Dosya adı üretilemedi, varsayılan kullanılacak:', filenameError.message);

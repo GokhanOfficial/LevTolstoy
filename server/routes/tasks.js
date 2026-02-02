@@ -47,7 +47,7 @@ router.post('/start', async (req, res) => {
         console.log(`🚀 Task başlatıldı: ${taskId} (${files.length} dosya)`);
 
         // Start processing in background
-        processTask(taskId, files, model || 'gemini-3-flash-preview');
+        processTask(taskId, files, model || 'gpt-4o');
 
         res.json({
             success: true,
@@ -122,7 +122,7 @@ async function processTask(taskId, files, model) {
 
         task.progress = 30;
 
-        // Process files with Gemini
+        // Process files with OpenAI
         // We track characters/token count to simulate percentage, or just rely on 'Processing...' state.
         const markdown = await fileHandler.processMultipleFiles(fileBuffers, model, (chunk) => {
             // Streaming content update

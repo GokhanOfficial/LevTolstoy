@@ -14,7 +14,7 @@ router.post('/', async (req, res) => {
         }
 
         const files = req.files;
-        const model = req.body.model || 'gemini-3-flash-preview'; // Default model
+        const model = req.body.model || 'gpt-4o'; // Default model
         const fileNames = files.map(f => f.originalname).join(', ');
 
         console.log(`📄 Dönüştürülüyor: ${files.length} dosya (${fileNames}) | Model: ${model}`);

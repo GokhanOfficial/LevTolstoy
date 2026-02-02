@@ -5,10 +5,10 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   maxFileSize: (process.env.MAX_FILE_SIZE || 50) * 1024 * 1024, // MB to bytes
 
-  gemini: {
-    apiKey: process.env.GEMINI_API_KEY,
-    baseUrl: process.env.GEMINI_BASE_URL || null, // Custom base URL (optional)
-    filenameModel: process.env.GEMINI_FILENAME_MODEL,
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    baseUrl: process.env.OPENAI_BASE_URL || null, // Custom base URL (optional)
+    filenameModel: process.env.OPENAI_FILENAME_MODEL,
   },
 
   googleDrive: {

@@ -75,7 +75,7 @@ app.use((err, req, res, next) => {
 app.listen(config.port, () => {
     console.log(`🚀 Doc2MD sunucusu http://localhost:${config.port} adresinde çalışıyor`);
 
-    if (!config.gemini.apiKey) {
-        console.warn('⚠️  GEMINI_API_KEY tanımlanmamış!');
+    if (!config.openai.apiKey) {
+        console.warn('⚠️  OPENAI_API_KEY tanımlanmamış!');
     }
 });
