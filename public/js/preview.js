@@ -179,7 +179,7 @@ function downloadMarkdown(markdown, filename = 'document.md') {
 }
 
 /**
- * Download as PDF using server-side generation and Google Drive
+ * Download as PDF using server-side generation
  */
 async function downloadPdf(markdown, filename = 'document.pdf') {
   // Ensure .pdf extension
@@ -189,47 +189,28 @@ async function downloadPdf(markdown, filename = 'document.pdf') {
 
   _showToast(window.i18n?.t('toast.pdfGenerating') || 'PDF oluşturuluyor...', 'info');
 
-  // Use server-side API if available
+  // Use server-side API
   if (window.api?.generatePdf) {
     const result = await window.api.generatePdf(markdown, filename);
 
-    if (result.success && result.downloadLink) {
-      // Open download link
-      window.open(result.downloadLink, '_blank');
+    if (result.success && result.url) {
+      // Download using anchor element (no popup, no print dialog)
+      const a = document.createElement('a');
+      a.href = result.url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       _showToast(window.i18n?.t('toast.pdfReady') || 'PDF hazır!', 'success');
       return;
     } else if (result.error) {
       _showToast(result.error, 'error');
+      return;
     }
   }
 
-  // Fallback to browser print
-  const html = renderMarkdown(markdown);
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${filename}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
-      <style>${PDF_STYLES}</style>
-    </head>
-    <body>
-      ${html}
-      <script>
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-            window.close();
-          }, 500);
-        };
-      </script>
-    </body>
-    </html>
-  `);
-  printWindow.document.close();
-  _showToast(window.i18n?.t('toast.pdfReady') || 'PDF ready', 'success');
+  _showToast(window.i18n?.t('toast.pdfFailed') || 'PDF oluşturulamadı', 'error');
 }
 
 /**

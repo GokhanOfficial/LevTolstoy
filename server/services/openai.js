@@ -181,8 +181,15 @@ async function generateFilename(markdown, model = null) {
 
     const client = createClient();
 
-    // Use first 5000 chars of markdown for context (to keep request small)
-    const contentSample = markdown.substring(0, 5000);
+    // For long texts, use first 4000 + last 4000 chars for better context
+    let contentSample;
+    if (markdown.length > 8000) {
+        const first = markdown.substring(0, 4000);
+        const last = markdown.substring(markdown.length - 4000);
+        contentSample = `${first}\n\n[...]\n\n${last}`;
+    } else {
+        contentSample = markdown;
+    }
 
     const prompt = `${getFilenamePrompt()}
 ${contentSample}

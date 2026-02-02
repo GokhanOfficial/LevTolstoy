@@ -174,9 +174,10 @@ async function generatePdf(markdown, filename = 'document') {
 
         return {
             success: true,
-            downloadLink: data.downloadLink,
-            viewLink: data.viewLink,
-            fileId: data.fileId
+            url: data.url,
+            s3Key: data.s3Key,
+            filename: data.filename,
+            storage: data.storage
         };
 
     } catch (error) {

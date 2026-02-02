@@ -27,8 +27,8 @@ router.get('/*', async (req, res) => {
 
         res.setHeader('Content-Type', contentType || 'application/octet-stream');
 
-        // For inline viewing (images, PDFs) vs download (others)
-        const inlineTypes = ['image/', 'application/pdf'];
+        // Only images shown inline, everything else (including PDFs) downloads
+        const inlineTypes = ['image/'];
         const isInline = inlineTypes.some(type => contentType?.startsWith(type));
 
         if (isInline) {
