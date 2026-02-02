@@ -98,23 +98,52 @@ async function processTask(taskId, files, model) {
         task.status = TaskStatus.PROCESSING;
         task.progress = 10;
 
-        // Read files from cache
+        // Read files from cache or S3
         const CACHE_DIR = path.join(__dirname, '../../public/cache');
         const fileBuffers = [];
+        const s3UrlMap = {}; // Map of filename to S3 URL
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const filePath = path.join(CACHE_DIR, path.basename(file.url));
 
-            if (fs.existsSync(filePath)) {
-                const buffer = fs.readFileSync(filePath);
+            // Check if file is from S3 or local cache
+            if (file.storage === 's3' && file.url) {
+                // File is on S3 - we need to fetch it for buffer but can pass URL to OpenAI
+                const https = require('https');
+                const http = require('http');
+
+                const buffer = await new Promise((resolve, reject) => {
+                    const protocol = file.url.startsWith('https') ? https : http;
+                    protocol.get(file.url, (response) => {
+                        const chunks = [];
+                        response.on('data', chunk => chunks.push(chunk));
+                        response.on('end', () => resolve(Buffer.concat(chunks)));
+                        response.on('error', reject);
+                    }).on('error', reject);
+                });
+
                 fileBuffers.push({
                     buffer,
                     originalname: file.filename,
                     mimetype: file.mimetype
                 });
+
+                // Store S3 URL for direct API usage
+                s3UrlMap[file.filename] = file.url;
             } else {
-                throw new Error(`Dosya bulunamadı: ${file.filename}`);
+                // Local cache
+                const filePath = path.join(CACHE_DIR, path.basename(file.url));
+
+                if (fs.existsSync(filePath)) {
+                    const buffer = fs.readFileSync(filePath);
+                    fileBuffers.push({
+                        buffer,
+                        originalname: file.filename,
+                        mimetype: file.mimetype
+                    });
+                } else {
+                    throw new Error(`Dosya bulunamadı: ${file.filename}`);
+                }
             }
 
             task.progress = 10 + Math.floor((i + 1) / files.length * 20);
@@ -122,8 +151,7 @@ async function processTask(taskId, files, model) {
 
         task.progress = 30;
 
-        // Process files with OpenAI
-        // We track characters/token count to simulate percentage, or just rely on 'Processing...' state.
+        // Process files with OpenAI (pass S3 URLs for direct usage)
         const markdown = await fileHandler.processMultipleFiles(fileBuffers, model, (chunk) => {
             // Streaming content update
             task.markdown += chunk;
@@ -132,7 +160,7 @@ async function processTask(taskId, files, model) {
             if (task.progress < 90) {
                 task.progress += 1;
             }
-        });
+        }, s3UrlMap);
 
         task.markdown = markdown;
         task.progress = 100;

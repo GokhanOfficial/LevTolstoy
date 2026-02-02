@@ -83,10 +83,11 @@ async function convertMultipleToMarkdown(files, model = 'gpt-4o', onChunk = null
     const content = [];
 
     for (const file of files) {
-        const base64Data = file.buffer.toString('base64');
         const contentType = getOpenAIContentType(file.mimeType);
 
         if (contentType === 'input_audio') {
+            // Audio files always use base64 (input_audio format)
+            const base64Data = file.buffer.toString('base64');
             content.push({
                 type: 'input_audio',
                 input_audio: {
@@ -95,13 +96,26 @@ async function convertMultipleToMarkdown(files, model = 'gpt-4o', onChunk = null
                 }
             });
         } else {
-            // Image/PDF - use image_url with data URI
-            content.push({
-                type: 'image_url',
-                image_url: {
-                    url: `data:${file.mimeType};base64,${base64Data}`
-                }
-            });
+            // Image/PDF - prefer URL if available, fallback to base64
+            if (file.s3Url) {
+                // Use S3 URL directly (faster, less memory)
+                content.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: file.s3Url
+                    }
+                });
+                console.log(`📎 Dosya URL ile gönderiliyor: ${file.name || 'file'}`);
+            } else {
+                // Fallback to base64 data URI
+                const base64Data = file.buffer.toString('base64');
+                content.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:${file.mimeType};base64,${base64Data}`
+                    }
+                });
+            }
         }
     }
 
@@ -125,7 +139,6 @@ async function convertMultipleToMarkdown(files, model = 'gpt-4o', onChunk = null
             model: model,
             messages: messages,
             stream: true,
-            max_tokens: 65536,
             temperature: 0.1,
             top_p: 0.95
         });
@@ -251,7 +264,6 @@ ${text}`;
                 }
             ],
             stream: true,
-            max_tokens: 65536,
             temperature: 0.3,
             top_p: 0.95
         });

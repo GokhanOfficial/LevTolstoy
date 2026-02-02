@@ -11,6 +11,7 @@ const generateTitleRoutes = require('./routes/generate-title');
 const uploadRoutes = require('./routes/upload');
 const tasksRoutes = require('./routes/tasks');
 const summarizeRoutes = require('./routes/summarize');
+const filesRoutes = require('./routes/files');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/generate-title', generateTitleRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/convert', tasksRoutes);
 app.use('/api/summarize', summarizeRoutes);
+app.use('/api/files', filesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

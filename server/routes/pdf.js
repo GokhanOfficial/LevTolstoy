@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pdfService = require('../services/pdfService');
-const googleDriveService = require('../services/googleDrive'); // Import googleDriveService
+const s3Service = require('../services/s3');
+const crypto = require('crypto');
 
-// POST /api/pdf - Generate PDF from markdown and upload to Drive
+// POST /api/pdf - Generate PDF from markdown
 router.post('/', async (req, res) => {
     try {
         const { markdown, filename = 'document' } = req.body;
@@ -15,31 +16,41 @@ router.post('/', async (req, res) => {
             });
         }
 
-        if (!googleDriveService.isConfigured()) { // Use googleDriveService for checks too
-            return res.status(400).json({
-                error: 'Google Drive yapılandırılmamış. "npm run auth" ile giriş yapın.',
-                errorKey: 'errors.driveNotConfigured'
-            });
-        }
-
         console.log(`📄 PDF oluşturuluyor: ${filename}`);
 
         // Generate PDF
         const pdfBuffer = await pdfService.generatePdf(markdown);
 
-        console.log(`📤 Google Drive\'a yükleniyor...`);
+        // Ensure .pdf extension
+        const pdfFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
 
-        // Upload to Drive
-        const driveResult = await pdfService.uploadToDrive(pdfBuffer, filename);
+        // If S3 is configured, upload to S3
+        if (s3Service.isConfigured()) {
+            const s3Key = `output/${crypto.randomUUID()}/${pdfFilename}`;
 
-        console.log(`✅ PDF yüklendi: ${driveResult.fileId}`);
+            const { url } = await s3Service.uploadFile(
+                pdfBuffer,
+                s3Key,
+                'application/pdf'
+            );
 
-        res.json({
-            success: true,
-            fileId: driveResult.fileId,
-            // viewLink feature removed since files are private
-            downloadLink: `/api/pdf/download/${driveResult.fileId}`
-        });
+            console.log(`✅ PDF S3'e yüklendi: ${pdfFilename}`);
+
+            res.json({
+                success: true,
+                url: url,
+                s3Key: s3Key,
+                filename: pdfFilename,
+                storage: 's3'
+            });
+        } else {
+            // No S3, return PDF for direct download
+            console.log(`✅ PDF direkt indiriliyor: ${pdfFilename}`);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(pdfFilename)}`);
+            res.send(pdfBuffer);
+        }
 
     } catch (error) {
         console.error('❌ PDF hatası:', error.message);
@@ -51,19 +62,26 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/pdf/download/:fileId - Proxy download from Drive
-router.get('/download/:fileId', async (req, res) => {
+// GET /api/pdf/download/:key(*) - Download PDF from S3 (proxy)
+router.get('/download/*', async (req, res) => {
     try {
-        const { fileId } = req.params;
+        const s3Key = req.params[0];
 
-        if (!fileId) {
-            return res.status(400).send('File ID required');
+        if (!s3Key) {
+            return res.status(400).send('S3 key required');
         }
 
-        const { stream, filename, mimeType } = await googleDriveService.downloadFromDrive(fileId); // Use googleDriveService
+        if (!s3Service.isConfigured()) {
+            return res.status(503).json({
+                error: 'S3 yapılandırılmamış',
+                errorKey: 'errors.s3NotConfigured'
+            });
+        }
 
-        res.setHeader('Content-Type', mimeType);
-        // Use RFC 5987 format for proper Unicode filename support
+        const { stream, contentType } = await s3Service.downloadFile(s3Key);
+        const filename = s3Key.split('/').pop();
+
+        res.setHeader('Content-Type', contentType || 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 
         stream.pipe(res);

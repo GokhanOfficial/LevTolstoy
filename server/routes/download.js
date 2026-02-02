@@ -1,23 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const googleDriveService = require('../services/googleDrive');
+const s3Service = require('../services/s3');
 
-// GET /api/download/:fileId - Drive'dan dosya indir
-router.get('/:fileId', async (req, res) => {
+// GET /api/download/:key(*) - Download file from S3
+router.get('/*', async (req, res) => {
     try {
-        const fileId = req.params.fileId;
+        const s3Key = req.params[0];
 
-        if (!googleDriveService.isConfigured()) {
-            return res.status(503).json({
-                error: 'Google Drive yapılandırılmamış',
-                errorKey: 'errors.driveNotConfigured'
+        if (!s3Key) {
+            return res.status(400).json({
+                error: 'S3 key gerekli',
+                errorKey: 'errors.noKey'
             });
         }
 
-        const { stream, filename, mimeType } = await googleDriveService.downloadFromDrive(fileId);
+        if (!s3Service.isConfigured()) {
+            return res.status(503).json({
+                error: 'S3 yapılandırılmamış',
+                errorKey: 'errors.s3NotConfigured'
+            });
+        }
 
-        res.setHeader('Content-Type', mimeType);
-        // Use RFC 5987 format for proper Unicode filename support
+        const { stream, contentType } = await s3Service.downloadFile(s3Key);
+        const filename = s3Key.split('/').pop();
+
+        res.setHeader('Content-Type', contentType || 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 
         stream.pipe(res);

@@ -1,6 +1,7 @@
 const mimeTypes = require('../utils/mimeTypes');
 const openaiService = require('./openai');
 const googleDriveService = require('./googleDrive');
+const s3Service = require('./s3');
 
 /**
  * Dosya tipini ve işlem yolunu belirler
@@ -17,11 +18,21 @@ function analyzeFile(mimeType) {
 }
 
 /**
- * Tek dosyayı işler ve Gemini için hazır hale getirir
- * @param {object} file - Multer file object
- * @returns {Promise<{buffer: Buffer, mimeType: string, name: string}>}
+ * Office dosyası mı kontrol eder
+ * @param {string} mimeType - MIME tipi
+ * @returns {boolean}
  */
-async function prepareFile(file) {
+function isOfficeFile(mimeType) {
+    return mimeTypes.needsConversion(mimeType);
+}
+
+/**
+ * Tek dosyayı işler ve API için hazır hale getirir
+ * @param {object} file - Multer file object
+ * @param {string} [s3Url] - Optional S3 URL for the file
+ * @returns {Promise<{buffer: Buffer, mimeType: string, name: string, s3Url?: string}>}
+ */
+async function prepareFile(file, s3Url = null) {
     const { buffer, mimetype, originalname } = file;
     const analysis = analyzeFile(mimetype);
 
@@ -37,9 +48,11 @@ async function prepareFile(file) {
         if (!googleDriveService.isConfigured()) {
             throw new Error(
                 `${analysis.formatInfo.name} dosyaları için Google Drive API yapılandırması gerekli. ` +
-                '"npm run auth" komutu ile giriş yapın.'
+                'Office dosyalarını (DOCX, PPTX, XLSX) işlemek için "npm run auth" komutu ile giriş yapın.'
             );
         }
+
+        console.log(`📄 Office dosyası PDF'e dönüştürülüyor: ${originalname}`);
 
         processBuffer = await googleDriveService.convertToPdf(
             buffer,
@@ -47,28 +60,35 @@ async function prepareFile(file) {
             analysis.formatInfo.googleMime
         );
         processMimeType = 'application/pdf';
+
+        // Office dosyası dönüştürüldükten sonra S3 URL geçersiz olur
+        s3Url = null;
     }
 
     return {
         buffer: processBuffer,
         mimeType: processMimeType,
-        name: originalname
+        name: originalname,
+        s3Url: s3Url
     };
 }
 
 /**
- * Birden fazla dosyayı tek bir Gemini çağrısı ile markdown'a dönüştürür
+ * Birden fazla dosyayı tek bir API çağrısı ile markdown'a dönüştürür
  * @param {Array} files - Multer file objects array
- * @param {string} model - Gemini model name
+ * @param {string} model - Model name
  * @param {function} onChunk - Optional callback for streaming chunks
+ * @param {Object} s3UrlMap - Optional map of filename to S3 URL
  * @returns {Promise<string>} - Birleşik markdown içeriği
  */
-async function processMultipleFiles(files, model, onChunk = null) {
+async function processMultipleFiles(files, model, onChunk = null, s3UrlMap = {}) {
     // Tüm dosyaları hazırla
     const preparedFiles = [];
 
     for (const file of files) {
-        const prepared = await prepareFile(file);
+        // S3 URL varsa kullan
+        const s3Url = s3UrlMap[file.originalname] || null;
+        const prepared = await prepareFile(file, s3Url);
         preparedFiles.push(prepared);
     }
 
@@ -122,5 +142,6 @@ module.exports = {
     prepareFile,
     processFile,
     processMultipleFiles,
-    getSupportedFormats
+    getSupportedFormats,
+    isOfficeFile
 };

@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const googleDriveService = require('../services/googleDrive');
-const config = require('../config');
+const s3Service = require('../services/s3');
 const crypto = require('crypto');
 
-// POST /api/save/markdown - Save markdown content to Drive
+// POST /api/save/markdown - Save markdown content to S3 or direct download
 router.post('/markdown', async (req, res) => {
     try {
         const { markdown, filename = 'document.md' } = req.body;
@@ -16,41 +15,42 @@ router.post('/markdown', async (req, res) => {
             });
         }
 
-        if (!googleDriveService.isConfigured()) {
-            return res.status(503).json({
-                error: 'Google Drive yapılandırılmamış',
-                errorKey: 'errors.driveNotConfigured'
-            });
-        }
-
-        // Use provided filename, fallback to UUID if not provided
-        let driveFilename;
+        // Ensure .md extension
+        let saveFilename;
         if (filename && filename.trim()) {
-            // Ensure .md extension
-            driveFilename = filename.endsWith('.md') ? filename : `${filename.replace(/\.[^/.]+$/, '')}.md`;
+            saveFilename = filename.endsWith('.md') ? filename : `${filename.replace(/\.[^/.]+$/, '')}.md`;
         } else {
-            // Fallback to UUID
             const uuid = crypto.randomUUID();
-            driveFilename = `${uuid}.md`;
+            saveFilename = `${uuid}.md`;
         }
 
-        // Upload to Markdown folder if configured
-        const folderId = config.googleDrive.mdFolderId;
+        // If S3 is configured, upload to S3
+        if (s3Service.isConfigured()) {
+            const s3Key = `output/${crypto.randomUUID()}/${saveFilename}`;
 
-        console.log(`💾 Markdown kaydediliyor (Drive): ${driveFilename}`);
+            const { url } = await s3Service.uploadFile(
+                markdown,
+                s3Key,
+                'text/markdown'
+            );
 
-        const result = await googleDriveService.uploadFile(
-            markdown,
-            driveFilename,
-            'text/markdown',
-            folderId
-        );
+            console.log(`💾 Markdown S3'e kaydedildi: ${saveFilename}`);
 
-        res.json({
-            success: true,
-            fileId: result.fileId,
-            webViewLink: result.webViewLink
-        });
+            res.json({
+                success: true,
+                url: url,
+                s3Key: s3Key,
+                filename: saveFilename,
+                storage: 's3'
+            });
+        } else {
+            // No S3, return markdown for direct download
+            console.log(`💾 Markdown direkt indiriliyor: ${saveFilename}`);
+
+            res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(saveFilename)}`);
+            res.send(markdown);
+        }
 
     } catch (error) {
         console.error('❌ Kaydetme hatası:', error.message);
