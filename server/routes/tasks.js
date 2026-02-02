@@ -109,14 +109,26 @@ async function processTask(taskId, files, model) {
             const file = files[i];
 
             // Check if file is from S3 or local cache
-            if (file.storage === 's3' && file.url) {
+            // Fallback: If storage is missing but URL starts with /api/files/, assume S3 (proxy)
+            const isS3 = file.storage === 's3' || (file.url && file.url.startsWith('/api/files/'));
+
+            if (isS3 && file.url) {
                 // File is on S3 - we need to fetch it for buffer but can pass URL to OpenAI
                 const https = require('https');
                 const http = require('http');
 
+                // Node.js http.get requires absolute URL
+                let downloadUrl = file.url;
+                if (downloadUrl.startsWith('/')) {
+                    const port = process.env.PORT || 3000;
+                    downloadUrl = `http://localhost:${port}${downloadUrl}`;
+                }
+
+                console.log(`📥 Dosya indiriliyor: ${downloadUrl}`);
+
                 const buffer = await new Promise((resolve, reject) => {
-                    const protocol = file.url.startsWith('https') ? https : http;
-                    protocol.get(file.url, (response) => {
+                    const protocol = downloadUrl.startsWith('https') ? https : http;
+                    protocol.get(downloadUrl, (response) => {
                         const chunks = [];
                         response.on('data', chunk => chunks.push(chunk));
                         response.on('end', () => resolve(Buffer.concat(chunks)));
