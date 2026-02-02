@@ -103,7 +103,9 @@ async function addFile(file) {
                 fileId: result.fileId,
                 url: result.url,
                 filename: result.filename,
-                mimetype: result.mimetype
+                mimetype: result.mimetype,
+                storage: result.storage,
+                s3Key: result.s3Key
             };
             console.log(`✅ Dosya cache'e yüklendi: ${file.name}`);
         } else {

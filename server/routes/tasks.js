@@ -23,6 +23,8 @@ router.post('/start', async (req, res) => {
     try {
         const { files, model } = req.body;
 
+        console.log('Task Start Request Files:', JSON.stringify(files, null, 2));
+
         if (!files || files.length === 0) {
             return res.status(400).json({
                 error: 'Dosya listesi boş',
@@ -129,7 +131,7 @@ async function processTask(taskId, files, model) {
                 });
 
                 // Store S3 URL for direct API usage
-                s3UrlMap[file.filename] = file.url;
+                // s3UrlMap[file.filename] = file.url; // Disabled: OpenAI cannot access localhost proxy URLs
             } else {
                 // Local cache
                 const filePath = path.join(CACHE_DIR, path.basename(file.url));
