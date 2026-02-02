@@ -16,7 +16,7 @@ const MdToPdfPage = {
         }
 
         // Initialize Theme if needed (handled globally mostly, but toggle is local)
-        this.initThemeToggle();
+
 
         // Editor sync with preview
         editor.addEventListener('input', (e) => {
@@ -52,23 +52,7 @@ const MdToPdfPage = {
         this.titleMarkdownHash = '';
     },
 
-    initThemeToggle() {
-        // Theme logic is mostly handled by window.ThemeManager in theme.js
-        // But the toggle button specific to this page might need listener if not global
-        const toggleBtn = document.getElementById('theme-toggle');
-        if (toggleBtn) {
-            // Remove old listeners by cloning (if needed, or just add since it's mount)
-            // But usually theme toggle is in header and might be global? 
-            // Checking HTML, it is in header. Header is shared partial or copied?
-            // In this project it seems copied. So we need to bind it.
 
-            // Note: theme.js should ideally handle this if it selects correctly.
-            // Let's rely on theme.js init if it runs on valid DOM, or re-run it.
-            if (window.ThemeManager) {
-                window.ThemeManager.init();
-            }
-        }
-    },
 
     initSyncScroll(editor, previewContent) {
         let isScrolling = false;

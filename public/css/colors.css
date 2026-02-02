@@ -1,0 +1,111 @@
+:root {
+  /* Base Colors - Dark Theme (default) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-elevated: rgba(30, 41, 59, 0.8);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-accent: #818cf8;
+  /* Light indigo */
+
+  --border-primary: rgba(51, 65, 85, 0.5);
+  --border-secondary: #475569;
+  --border-focus: #6366f1;
+  /* Indigo 500 */
+
+  --accent-primary: #6366f1;
+  /* Indigo 500 */
+  --accent-hover: #4f46e5;
+  /* Indigo 600 */
+  --accent-gradient-from: #6366f1;
+  --accent-gradient-to: #a855f7;
+  /* Purple 500 */
+
+  /* UI Element Colors */
+  --header-bg: rgba(15, 23, 42, 0.8);
+  --card-bg: rgba(30, 41, 59, 0.5);
+  --input-bg: rgba(15, 23, 42, 0.5);
+
+  --button-primary-bg: linear-gradient(to right, var(--accent-gradient-from), var(--accent-gradient-to));
+  --button-primary-text: #ffffff;
+
+  --button-secondary-bg: #334155;
+  --button-secondary-hover: #475569;
+  --button-secondary-text: #e2e8f0;
+
+  --bg-dropzone-hover: rgba(99, 102, 241, 0.1);
+  --bg-dropzone-active: rgba(99, 102, 241, 0.2);
+
+  /* Syntax Highlighting Base */
+  --code-bg: #1e1e1e;
+  --code-text: #d4d4d4;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-accent: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+html.light {
+  /* Light Theme - Modern & Clean */
+  --bg-primary: #f1f5f9;
+  /* Slate 100 - Darker than before */
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e2e8f0;
+  /* Slate 200 */
+  --bg-elevated: rgba(255, 255, 255, 0.95);
+
+  --text-primary: #0f172a;
+  /* Slate 900 - Darker for better contrast */
+  --text-secondary: #334155;
+  /* Slate 700 - Darker */
+  --text-muted: #64748b;
+  /* Slate 500 */
+  --text-accent: #4338ca;
+  /* Indigo 700 - Darker */
+
+  --border-primary: #cbd5e1;
+  /* Slate 300 */
+  --border-secondary: #e2e8f0;
+  /* Slate 200 */
+  --border-focus: #4f46e5;
+  /* Indigo 600 */
+
+  --accent-primary: #4f46e5;
+  /* Indigo 600 */
+  --accent-hover: #4338ca;
+  /* Indigo 700 */
+  --accent-gradient-from: #4f46e5;
+  --accent-gradient-to: #7c3aed;
+  /* Violet 600 */
+
+  /* UI Element Colors */
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --card-bg: #ffffff;
+  --input-bg: #f8fafc;
+
+  --button-primary-bg: linear-gradient(to right, var(--accent-gradient-from), var(--accent-gradient-to));
+  --button-primary-text: #ffffff;
+
+  --button-secondary-bg: #f1f5f9;
+  --button-secondary-hover: #e2e8f0;
+  --button-secondary-text: #334155;
+
+  --bg-dropzone-hover: rgba(79, 70, 229, 0.05);
+  /* Very subtle indigo tint */
+  --bg-dropzone-active: rgba(79, 70, 229, 0.1);
+
+  /* Syntax Highlighting Base */
+  --code-bg: #f8fafc;
+  --code-text: #334155;
+
+  /* Shadows - Softer for light theme */
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-accent: 0 0 20px rgba(79, 70, 229, 0.2);
+}

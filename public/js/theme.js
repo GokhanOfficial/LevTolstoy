@@ -14,12 +14,16 @@ const ThemeManager = {
         this.updateIcons();
 
         // Listen for toggle button (using event delegation for SPA support)
-        document.addEventListener('click', (e) => {
-            const toggleBtn = e.target.closest('#theme-toggle');
-            if (toggleBtn) {
-                this.toggle();
-            }
-        });
+        // Ensure we don't add duplicate listeners
+        if (!this.initialized) {
+            document.addEventListener('click', (e) => {
+                const toggleBtn = e.target.closest('#theme-toggle');
+                if (toggleBtn) {
+                    this.toggle();
+                }
+            });
+            this.initialized = true;
+        }
     },
 
     toggle() {

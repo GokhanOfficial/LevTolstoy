@@ -38,9 +38,6 @@ const Router = {
     async loadPage(path, pushState = true) {
         this.currentPath = path;
 
-        // Show loading state if needed
-        // document.body.style.cursor = 'wait';
-
         try {
             // Fetch the HTML of the new page
             const response = await fetch(path);
@@ -54,32 +51,45 @@ const Router = {
             const newMain = doc.querySelector('main');
             const currentMain = document.querySelector('main');
 
+            if (!newMain || !currentMain) {
+                console.error('Main element not found');
+                window.location.href = path; // Fallback to full reload
+                return;
+            }
+
             // Fade out
-            currentMain.style.transition = 'opacity 0.2s ease';
+            currentMain.style.transition = 'opacity 0.15s ease';
             currentMain.style.opacity = '0';
 
-            setTimeout(() => {
-                if (newMain && currentMain) {
-                    currentMain.innerHTML = newMain.innerHTML;
+            await new Promise(resolve => setTimeout(resolve, 150));
 
-                    // Update Title
-                    document.title = doc.title;
+            // Update DOM
+            currentMain.innerHTML = newMain.innerHTML;
+            document.title = doc.title;
 
-                    // Update Active Nav Link
-                    this.updateActiveNav(path);
+            // Update Active Nav Link
+            this.updateActiveNav(path);
 
-                    // Re-run page scripts
-                    this.handleRoute(path);
+            // Wait for DOM to settle
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-                    // Fade in
-                    currentMain.style.opacity = '1';
-                }
-                // document.body.style.cursor = 'default';
-            }, 200); // Wait for transition
+            // Reinitialize page-specific JS
+            this.handleRoute(path);
+
+            // Reinitialize global modules
+            if (window.i18n?.init) {
+                window.i18n.init();
+            }
+            if (window.ThemeManager?.init) {
+                window.ThemeManager.init();
+            }
+
+            // Fade in
+            currentMain.style.opacity = '1';
 
         } catch (error) {
             console.error('Navigation error:', error);
-            window.location.reload(); // Fallback
+            window.location.href = path; // Fallback to full reload
         }
     },
 
