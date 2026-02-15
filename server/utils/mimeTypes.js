@@ -74,11 +74,10 @@ const SUPPORTED_FORMATS = {
     // FFmpeg ile encode edilmesi gereken formatlar
     encode: {
         // Audio - encode to MP3
-        'audio/m4a': { ext: '.m4a', name: 'M4A', targetMime: 'audio/mpeg' },
+        'audio/mp4': { ext: '.m4a', name: 'M4A', targetMime: 'audio/mpeg' },
         'audio/x-m4a': { ext: '.m4a', name: 'M4A', targetMime: 'audio/mpeg' },
         'audio/aac': { ext: '.aac', name: 'AAC', targetMime: 'audio/mpeg' },
-        'audio/opus': { ext: '.opus', name: 'Opus', targetMime: 'audio/mpeg' },
-        'audio/ogg': { ext: '.ogg', name: 'OGG', targetMime: 'audio/mpeg' },
+        'audio/ogg': { ext: '.ogg', name: 'OGG/Opus', targetMime: 'audio/mpeg' },
         'audio/flac': { ext: '.flac', name: 'FLAC', targetMime: 'audio/mpeg' },
         'audio/x-flac': { ext: '.flac', name: 'FLAC', targetMime: 'audio/mpeg' },
         'audio/webm': { ext: '.weba', name: 'WebM Audio', targetMime: 'audio/mpeg' },

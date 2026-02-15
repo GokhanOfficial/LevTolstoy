@@ -251,12 +251,23 @@ function updateLanguageIcon(lang) {
     const btn = document.getElementById('lang-toggle');
     if (!btn) return;
 
-    // Update content with flag
+    // Ensure we have a reusable span for the flag icon
+    let iconSpan = btn.querySelector('span.text-lg[role="img"]');
+    if (!iconSpan) {
+        iconSpan = document.createElement('span');
+        iconSpan.className = 'text-lg';
+        iconSpan.setAttribute('role', 'img');
+        btn.appendChild(iconSpan);
+    }
+
+    // Update content and accessibility attributes without replacing the element
     if (lang === 'tr') {
-        btn.innerHTML = '<span class="text-lg" role="img" aria-label="TR">🇹🇷</span>';
+        iconSpan.textContent = '🇹🇷';
+        iconSpan.setAttribute('aria-label', 'TR');
         btn.title = 'Türkçe';
     } else {
-        btn.innerHTML = '<span class="text-lg" role="img" aria-label="EN">🇬🇧</span>';
+        iconSpan.textContent = '🇬🇧';
+        iconSpan.setAttribute('aria-label', 'EN');
         btn.title = 'English';
     }
 }

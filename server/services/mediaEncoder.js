@@ -3,9 +3,12 @@ const config = require('../config');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { Readable } = require('stream');
 const { promisify } = require('util');
-const exec = promisify(require('child_process').exec);
+const { execFile } = require('child_process');
+const execFilePromise = promisify(execFile);
+const { needsEncoding: needsEncodingFromMimeTypes } = require('../utils/mimeTypes');
 
 let ffmpegAvailable = false;
 let ffmpegPath = null;
@@ -16,7 +19,7 @@ const GEMINI_MAX_SIZE = 100 * 1024 * 1024;
 async function checkFfmpeg() {
     try {
         const ffmpegCmd = config.ffmpeg?.path || 'ffmpeg';
-        const { stdout } = await exec(`${ffmpegCmd} -version`);
+        const { stdout } = await execFilePromise(ffmpegCmd, ['-version']);
 
         if (stdout.includes('ffmpeg version')) {
             ffmpegAvailable = true;
@@ -37,12 +40,7 @@ function isAvailable() {
 }
 
 function needsEncoding(mimeType) {
-    const encodeMimes = [
-        'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/opus',
-        'audio/ogg', 'audio/flac', 'audio/x-flac', 'audio/webm',
-        'video/x-matroska', 'video/3gpp', 'video/3gpp2', 'video/webm'
-    ];
-    return encodeMimes.includes(mimeType);
+    return needsEncodingFromMimeTypes(mimeType);
 }
 
 function needsCompression(fileSize) {
@@ -68,28 +66,66 @@ function getMediaInfo(buffer) {
     });
 }
 
-function encodeAudio(buffer, fileSize, progressCallback = null) {
-    return new Promise(async (resolve, reject) => {
-        const tempDir = os.tmpdir();
-        const inputPath = path.join(tempDir, `ffmpeg-input-${Date.now()}.tmp`);
-        const outputPath = path.join(tempDir, `ffmpeg-output-${Date.now()}.mp3`);
+/**
+ * Generate a unique filename using crypto for avoiding race conditions
+ */
+function generateUniqueFilename(prefix, extension) {
+    const randomBytes = crypto.randomBytes(8).toString('hex');
+    const timestamp = Date.now();
+    return `${prefix}-${timestamp}-${randomBytes}${extension}`;
+}
 
+function encodeAudio(buffer, fileSize, progressCallback = null) {
+    const tempDir = os.tmpdir();
+    const inputPath = path.join(tempDir, generateUniqueFilename('ffmpeg-input', '.tmp'));
+    const outputPath = path.join(tempDir, generateUniqueFilename('ffmpeg-output', '.mp3'));
+
+    return new Promise((resolve, reject) => {
         let startTime = Date.now();
         let lastProgressTime = 0;
+        let timeoutId = null;
+        let encodingProcess = null;
 
+        const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            try { fs.unlinkSync(inputPath); } catch (e) { }
+            try { fs.unlinkSync(outputPath); } catch (e) { }
+            if (encodingProcess) {
+                try { encodingProcess.kill(); } catch (e) { }
+            }
+        };
+
+        const handleTimeout = () => {
+            cleanup();
+            reject(new Error('Encoding timeout exceeded'));
+        };
+
+        // Set timeout from config
+        const maxTimeout = config.ffmpeg?.maxEncodingTimeMs || 300000; // 5 minutes default
+        timeoutId = setTimeout(handleTimeout, maxTimeout);
+
+        // Write input file synchronously
         try {
             fs.writeFileSync(inputPath, buffer);
-            let targetBitrate = 128;
+        } catch (error) {
+            cleanup();
+            reject(error);
+            return;
+        }
 
-            if (fileSize > GEMINI_MAX_SIZE) {
-                try {
-                    const info = await getMediaInfo(buffer);
+        // Determine target bitrate
+        let targetBitrate = 128;
+        const bitratePromise = fileSize > GEMINI_MAX_SIZE
+            ? getMediaInfo(buffer)
+                .then(info => {
                     const calculatedBitrate = calculateTargetBitrate(fileSize, info.duration);
                     if (calculatedBitrate) targetBitrate = Math.min(calculatedBitrate, 128);
-                } catch (e) { }
-            }
+                })
+                .catch(() => { /* Use default bitrate on error */ })
+            : Promise.resolve();
 
-            ffmpeg(inputPath)
+        bitratePromise.then(() => {
+            encodingProcess = ffmpeg(inputPath)
                 .audioCodec('libmp3lame')
                 .audioBitrate(targetBitrate)
                 .audioChannels(2)
@@ -114,11 +150,11 @@ function encodeAudio(buffer, fileSize, progressCallback = null) {
                     }
                 })
                 .on('error', (err) => {
-                    try { fs.unlinkSync(inputPath); } catch (e) { }
-                    try { fs.unlinkSync(outputPath); } catch (e) { }
+                    cleanup();
                     reject(new Error(`Audio encoding failed: ${err.message}`));
                 })
                 .on('end', () => {
+                    if (timeoutId) clearTimeout(timeoutId);
                     try {
                         const outputBuffer = fs.readFileSync(outputPath);
                         fs.unlinkSync(inputPath);
@@ -130,49 +166,76 @@ function encodeAudio(buffer, fileSize, progressCallback = null) {
                             resolve(outputBuffer);
                         }
                     } catch (err) {
-                        try { fs.unlinkSync(inputPath); } catch (e) { }
-                        try { fs.unlinkSync(outputPath); } catch (e) { }
+                        cleanup();
                         reject(err);
                     }
                 })
                 .save(outputPath);
-
-        } catch (error) {
-            try { fs.unlinkSync(inputPath); } catch (e) { }
-            try { fs.unlinkSync(outputPath); } catch (e) { }
+        }).catch(error => {
+            cleanup();
             reject(error);
-        }
+        });
     });
 }
 
 function encodeVideo(buffer, fileSize, progressCallback = null) {
-    return new Promise(async (resolve, reject) => {
-        const tempDir = os.tmpdir();
-        const inputPath = path.join(tempDir, `ffmpeg-input-${Date.now()}.tmp`);
-        const outputPath = path.join(tempDir, `ffmpeg-output-${Date.now()}.mp4`);
+    const tempDir = os.tmpdir();
+    const inputPath = path.join(tempDir, generateUniqueFilename('ffmpeg-input', '.tmp'));
+    const outputPath = path.join(tempDir, generateUniqueFilename('ffmpeg-output', '.mp4'));
 
+    return new Promise((resolve, reject) => {
         let startTime = Date.now();
         let lastProgressTime = 0;
+        let timeoutId = null;
+        let encodingProcess = null;
 
+        const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            try { fs.unlinkSync(inputPath); } catch (e) { }
+            try { fs.unlinkSync(outputPath); } catch (e) { }
+            if (encodingProcess) {
+                try { encodingProcess.kill(); } catch (e) { }
+            }
+        };
+
+        const handleTimeout = () => {
+            cleanup();
+            reject(new Error('Encoding timeout exceeded'));
+        };
+
+        // Set timeout from config
+        const maxTimeout = config.ffmpeg?.maxEncodingTimeMs || 300000; // 5 minutes default
+        timeoutId = setTimeout(handleTimeout, maxTimeout);
+
+        // Write input file synchronously
         try {
             fs.writeFileSync(inputPath, buffer);
-            let videoBitrate = '1000k';
-            let audioBitrate = '128k';
-            let crf = 23;
+        } catch (error) {
+            cleanup();
+            reject(error);
+            return;
+        }
 
-            if (fileSize > GEMINI_MAX_SIZE) {
-                try {
-                    const info = await getMediaInfo(buffer);
+        // Determine encoding parameters
+        let videoBitrate = '1000k';
+        let audioBitrate = '128k';
+        let crf = 23;
+
+        const bitratePromise = fileSize > GEMINI_MAX_SIZE
+            ? getMediaInfo(buffer)
+                .then(info => {
                     const calculatedBitrate = calculateTargetBitrate(fileSize, info.duration);
                     if (calculatedBitrate) {
                         videoBitrate = `${Math.max(500, Math.floor(calculatedBitrate * 0.9))}k`;
                         audioBitrate = '96k';
                         crf = 28;
                     }
-                } catch (e) { }
-            }
+                })
+                .catch(() => { /* Use default parameters on error */ })
+            : Promise.resolve();
 
-            ffmpeg(inputPath)
+        bitratePromise.then(() => {
+            encodingProcess = ffmpeg(inputPath)
                 .videoCodec('libx264')
                 .videoBitrate(videoBitrate)
                 .outputOptions([`-crf ${crf}`, '-preset fast', '-movflags +faststart'])
@@ -198,11 +261,11 @@ function encodeVideo(buffer, fileSize, progressCallback = null) {
                     }
                 })
                 .on('error', (err) => {
-                    try { fs.unlinkSync(inputPath); } catch (e) { }
-                    try { fs.unlinkSync(outputPath); } catch (e) { }
+                    cleanup();
                     reject(new Error(`Video encoding failed: ${err.message}`));
                 })
                 .on('end', () => {
+                    if (timeoutId) clearTimeout(timeoutId);
                     try {
                         const outputBuffer = fs.readFileSync(outputPath);
                         fs.unlinkSync(inputPath);
@@ -214,18 +277,15 @@ function encodeVideo(buffer, fileSize, progressCallback = null) {
                             resolve(outputBuffer);
                         }
                     } catch (err) {
-                        try { fs.unlinkSync(inputPath); } catch (e) { }
-                        try { fs.unlinkSync(outputPath); } catch (e) { }
+                        cleanup();
                         reject(err);
                     }
                 })
                 .save(outputPath);
-
-        } catch (error) {
-            try { fs.unlinkSync(inputPath); } catch (e) { }
-            try { fs.unlinkSync(outputPath); } catch (e) { }
+        }).catch(error => {
+            cleanup();
             reject(error);
-        }
+        });
     });
 }
 
