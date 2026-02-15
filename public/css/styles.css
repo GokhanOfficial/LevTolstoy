@@ -2288,8 +2288,10 @@ html.light #mobile-menu-btn:hover {
   background-color: #e2e8f0;
 }
 
-html.light .text-white {
-  color: #0f172a !important; /* Force dark text on white icons context */
+/* More specific selector for white text in navigation/header contexts only */
+html.light nav .text-white,
+html.light header .text-white {
+  color: #0f172a;
 }
 
 /* Drop Zone */

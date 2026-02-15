@@ -92,6 +92,31 @@ hr {
 `;
 
 /**
+ * Sanitize string for PDF metadata to prevent XSS
+ * @param {string} str - String to sanitize
+ * @returns {string} - Sanitized string
+ */
+function sanitizeMetadata(str) {
+  if (!str) return '';
+  let sanitized = str;
+  let previousLength;
+  
+  // Remove potentially harmful characters and control characters
+  sanitized = sanitized
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/(?:javascript|data|vbscript):/gi, ''); // Remove dangerous protocols
+  
+  // Iteratively remove event handlers until no more are found
+  do {
+    previousLength = sanitized.length;
+    sanitized = sanitized.replace(/on\w+/gi, '');
+  } while (sanitized.length !== previousLength);
+  
+  return sanitized.trim();
+}
+
+/**
  * Extract metadata from markdown content
  * @param {string} markdown - Markdown content
  * @param {string} filename - Original filename
@@ -100,7 +125,7 @@ hr {
 function extractMetadata(markdown, filename) {
   // Extract first H1 heading as title
   const h1Match = markdown.match(/^#\s+(.+)$/m);
-  const title = h1Match ? h1Match[1].trim() :
+  const rawTitle = h1Match ? h1Match[1].trim() :
     (filename && filename !== 'document' ? filename.replace(/\.pdf$/i, '') : 'LevTolstoy Dönüştürme');
 
   // Extract first paragraph as subject (max 200 chars)
@@ -108,20 +133,20 @@ function extractMetadata(markdown, filename) {
     .replace(/^#+\s+.+$/gm, '') // Remove headings
     .trim()
     .split('\n\n')[0];
-  const subject = firstParagraph ?
+  const rawSubject = firstParagraph ?
     firstParagraph.substring(0, 200).trim() + (firstParagraph.length > 200 ? '...' : '') :
     'LevTolstoy ile dönüştürülmüş doküman';
 
   // Extract keywords from H2 and H3 headings (first 5)
   const headings = [...markdown.matchAll(/^#{2,3}\s+(.+)$/gm)]
-    .map(m => m[1].trim())
+    .map(m => sanitizeMetadata(m[1].trim()))
     .slice(0, 5);
-  const keywords = headings.length > 0 ? headings.join(', ') : 'LevTolstoy, Markdown, AI';
+  const rawKeywords = headings.length > 0 ? headings.join(', ') : 'LevTolstoy, Markdown, AI';
 
   return {
-    title,
-    subject,
-    keywords,
+    title: sanitizeMetadata(rawTitle),
+    subject: sanitizeMetadata(rawSubject),
+    keywords: sanitizeMetadata(rawKeywords),
     author: 'LevTolstoy AI',
     creator: 'LevTolstoy AI',
     producer: 'LevTolstoy PDF Service'

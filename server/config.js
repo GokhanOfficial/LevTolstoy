@@ -18,8 +18,18 @@ module.exports = {
     mdFolderId: process.env.GOOGLE_DRIVE_MD_FOLDER_ID
   },
 
+  // FFmpeg configuration
+  // FFmpeg is an optional external dependency used for media encoding.
+  // By default, the application will try to use the `ffmpeg` binary available on the system PATH.
+  // If FFmpeg is installed in a custom location, set the FFMPEG_PATH environment variable
+  // to the absolute path of the ffmpeg executable (e.g., /usr/local/bin/ffmpeg).
+  //
+  // Note: Media encoding features (such as audio/video conversions) will only work if FFmpeg
+  // is installed and accessible via this configuration.
   ffmpeg: {
+    // Path or command name for the ffmpeg executable.
     path: process.env.FFMPEG_PATH || 'ffmpeg',
+    // Maximum time allowed for a single encoding job before it is aborted (in milliseconds).
     maxEncodingTimeMs: 5 * 60 * 1000, // 5 min timeout
   }
 };

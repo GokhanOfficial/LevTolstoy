@@ -67,17 +67,15 @@ const upload = multer({
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = getAllowedTypes();
-        const maxSize = getMaxFileSize(file.mimetype);
 
         if (!allowedTypes.includes(file.mimetype)) {
             return cb(new Error(`Desteklenmeyen dosya türü: ${file.mimetype}`), false);
         }
 
-        // Note: Multer checks size automatically, but we log the limit
-        if (req.headers['content-length'] && parseInt(req.headers['content-length']) > maxSize) {
-            const limitMB = Math.floor(maxSize / 1024 / 1024);
-            return cb(new Error(`Dosya boyutu ${limitMB} MB limitini aşıyor`), false);
-        }
+        // Note: Multer enforces a global file size limit via `limits.fileSize`.
+        // Per-type size limits are validated using server-side metadata
+        // (req.file.size in the route handler) after the upload is processed,
+        // rather than relying on client-controlled headers.
 
         cb(null, true);
     }
@@ -111,6 +109,18 @@ router.post('/', upload.single('file'), (req, res) => {
             return res.status(400).json({
                 error: 'Dosya yüklenmedi',
                 errorKey: 'errors.noFile'
+            });
+        }
+
+        // Server-side size validation after upload
+        const maxSize = getMaxFileSize(req.file.mimetype);
+        if (req.file.size > maxSize) {
+            // Delete the uploaded file
+            fs.unlinkSync(req.file.path);
+            const limitMB = Math.floor(maxSize / 1024 / 1024);
+            return res.status(400).json({
+                error: `Dosya boyutu ${limitMB} MB limitini aşıyor`,
+                errorKey: 'errors.fileTooLarge'
             });
         }
 
