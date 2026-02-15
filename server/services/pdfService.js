@@ -98,13 +98,22 @@ hr {
  */
 function sanitizeMetadata(str) {
   if (!str) return '';
+  let sanitized = str;
+  let previousLength;
+  
   // Remove potentially harmful characters and control characters
-  return str
+  sanitized = sanitized
     .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
     .replace(/[<>]/g, '') // Remove angle brackets
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '') // Remove event handlers
-    .trim();
+    .replace(/(?:javascript|data|vbscript):/gi, ''); // Remove dangerous protocols
+  
+  // Iteratively remove event handlers until no more are found
+  do {
+    previousLength = sanitized.length;
+    sanitized = sanitized.replace(/on\w+/gi, '');
+  } while (sanitized.length !== previousLength);
+  
+  return sanitized.trim();
 }
 
 /**
