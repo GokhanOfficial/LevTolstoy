@@ -1,9 +1,13 @@
 // File Upload Handler with Drag & Drop and Cache Upload
 
 const SUPPORTED_EXTENSIONS = [
-    '.pdf', '.pptx', '.docx', '.xlsx',
+    '.pdf', '.pptx', '.ppt', '.docx', '.doc', '.xlsx', '.xls',
     '.png', '.jpg', '.jpeg', '.webp', '.gif',
-    '.mp3', '.wav', '.ogg',
+    '.mp3', '.wav',
+    // FFmpeg-encodable audio formats
+    '.m4a', '.aac', '.opus', '.flac', '.ogg', '.weba',
+    // FFmpeg-encodable video formats (converted to MP3 audio)
+    '.mp4', '.avi', '.mkv', '.mov', '.webm', '.3gp', '.m4v', '.mpeg', '.mpg', '.wmv', '.flv',
     '.txt', '.md'
 ];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -20,7 +24,9 @@ function getFileIconClass(filename) {
     if (['pptx', 'ppt'].includes(ext)) return 'pptx';
     if (['docx', 'doc'].includes(ext)) return 'docx';
     if (['xlsx', 'xls'].includes(ext)) return 'xlsx';
-    if (['mp3', 'wav', 'ogg'].includes(ext)) return 'audio';
+    // All audio and video formats that will be converted to audio
+    if (['mp3', 'wav', 'm4a', 'aac', 'opus', 'flac', 'ogg', 'weba'].includes(ext)) return 'audio';
+    if (['mp4', 'avi', 'mkv', 'mov', 'webm', '3gp', 'm4v', 'mpeg', 'mpg', 'wmv', 'flv'].includes(ext)) return 'video';
     if (['txt', 'md'].includes(ext)) return 'text';
     return 'image';
 }

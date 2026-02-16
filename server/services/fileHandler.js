@@ -77,10 +77,7 @@ async function prepareFile(file, s3Url = null) {
             );
         }
 
-        const outputFormat = analysis.formatInfo.outputFormat;
-        const isAudio = analysis.formatInfo.outputMime.startsWith('audio/');
-
-        console.log(`🎵 Medya dosyası ${outputFormat.toUpperCase()}'e dönüştürülüyor: ${originalname}`);
+        console.log(`🎵 Medya dosyası MP3'e dönüştürülüyor: ${originalname}`);
 
         try {
             const result = await mediaEncoder.encodeWithSizeReduction(

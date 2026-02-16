@@ -47,7 +47,7 @@ const SUPPORTED_FORMATS = {
         }
     },
 
-    // FFmpeg ile MP3/MP4'e dönüştürülmesi gereken formatlar
+    // FFmpeg ile MP3'e dönüştürülmesi gereken formatlar (all output MP3 audio)
     encode: {
         // Audio formats -> MP3
         'audio/mp4': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
@@ -62,13 +62,18 @@ const SUPPORTED_FORMATS = {
         'audio/x-opus': { ext: '.opus', name: 'Opus', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/webm': { ext: '.weba', name: 'WebM Audio', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
 
-        // Video formats -> MP4
-        'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp4', outputMime: 'video/mp4' },
-        'video/3gpp': { ext: '.3gp', name: '3GP', outputFormat: 'mp4', outputMime: 'video/mp4' },
-        'video/webm': { ext: '.webm', name: 'WebM', outputFormat: 'mp4', outputMime: 'video/mp4' },
-        'video/x-m4v': { ext: '.m4v', name: 'M4V', outputFormat: 'mp4', outputMime: 'video/mp4' },
-        'video/avi': { ext: '.avi', name: 'AVI', outputFormat: 'mp4', outputMime: 'video/mp4' },
-        'video/x-msvideo': { ext: '.avi', name: 'AVI', outputFormat: 'mp4', outputMime: 'video/mp4' }
+        // Video formats -> MP3 (extract audio for OpenAI compatible API)
+        'video/mp4': { ext: '.mp4', name: 'MP4', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/3gpp': { ext: '.3gp', name: '3GP', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/webm': { ext: '.webm', name: 'WebM', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/x-m4v': { ext: '.m4v', name: 'M4V', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/avi': { ext: '.avi', name: 'AVI', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/x-msvideo': { ext: '.avi', name: 'AVI', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/quicktime': { ext: '.mov', name: 'MOV', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/x-ms-wmv': { ext: '.wmv', name: 'WMV', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/x-flv': { ext: '.flv', name: 'FLV', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'video/mpeg': { ext: '.mpeg', name: 'MPEG', outputFormat: 'mp3', outputMime: 'audio/mpeg' }
     }
 };
 

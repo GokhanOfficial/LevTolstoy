@@ -22,17 +22,23 @@ const AUDIO_FORMATS_TO_ENCODE = {
     'audio/webm': { ext: '.weba', name: 'WebM Audio', outputFormat: 'mp3' }
 };
 
-// Video formats that need encoding to MP4
+// Video formats that need encoding to MP3 (extract audio)
+// All video formats are converted to MP3 audio for OpenAI compatible API
 const VIDEO_FORMATS_TO_ENCODE = {
-    'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp4' },
-    'video/3gpp': { ext: '.3gp', name: '3GP', outputFormat: 'mp4' },
-    'video/webm': { ext: '.webm', name: 'WebM', outputFormat: 'mp4' },
-    'video/x-m4v': { ext: '.m4v', name: 'M4V', outputFormat: 'mp4' },
-    'video/avi': { ext: '.avi', name: 'AVI', outputFormat: 'mp4' },
-    'video/x-msvideo': { ext: '.avi', name: 'AVI', outputFormat: 'mp4' }
+    'video/mp4': { ext: '.mp4', name: 'MP4', outputFormat: 'mp3' },
+    'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp3' },
+    'video/3gpp': { ext: '.3gp', name: '3GP', outputFormat: 'mp3' },
+    'video/webm': { ext: '.webm', name: 'WebM', outputFormat: 'mp3' },
+    'video/x-m4v': { ext: '.m4v', name: 'M4V', outputFormat: 'mp3' },
+    'video/avi': { ext: '.avi', name: 'AVI', outputFormat: 'mp3' },
+    'video/x-msvideo': { ext: '.avi', name: 'AVI', outputFormat: 'mp3' },
+    'video/quicktime': { ext: '.mov', name: 'MOV', outputFormat: 'mp3' },
+    'video/x-ms-wmv': { ext: '.wmv', name: 'WMV', outputFormat: 'mp3' },
+    'video/x-flv': { ext: '.flv', name: 'FLV', outputFormat: 'mp3' },
+    'video/mpeg': { ext: '.mpeg', name: 'MPEG', outputFormat: 'mp3' }
 };
 
-// All formats that need encoding
+// All formats that need encoding (all output to MP3)
 const ALL_FORMATS_TO_ENCODE = {
     ...AUDIO_FORMATS_TO_ENCODE,
     ...VIDEO_FORMATS_TO_ENCODE
@@ -181,9 +187,9 @@ async function encodeMedia(inputBuffer, mimeType, options = {}, onProgress = nul
         );
     }
 
-    const isAudio = isAudioFormat(mimeType);
-    const outputFormat = formatInfo.outputFormat;
-    const outputMimeType = isAudio ? 'audio/mpeg' : 'video/mp4';
+    // All formats are converted to MP3 audio for OpenAI compatible API
+    const outputFormat = 'mp3';
+    const outputMimeType = 'audio/mpeg';
 
     // Get duration for bitrate calculation
     let duration;
@@ -193,49 +199,21 @@ async function encodeMedia(inputBuffer, mimeType, options = {}, onProgress = nul
         throw new Error(`Could not determine media duration: ${err.message}`);
     }
 
-    // Calculate target bitrate
+    // Calculate target bitrate for audio
     const targetSize = options.targetSize || TARGET_FILE_SIZE;
-    const bitrate = calculateBitrate(duration, targetSize, isAudio ? 'audio' : 'video');
+    const bitrate = calculateBitrate(duration, targetSize, 'audio');
 
-    // Build FFmpeg arguments
+    // Build FFmpeg arguments - always output MP3 audio
     const ffmpegArgs = [
         '-i', 'pipe:0',
-        '-y' // Overwrite output
+        '-y', // Overwrite output
+        '-vn', // No video (extract audio only)
+        '-acodec', 'libmp3lame',
+        '-b:a', `${bitrate}k`,
+        '-ar', '44100', // Sample rate
+        '-ac', '2', // Stereo
+        '-f', 'mp3'
     ];
-
-    if (isAudio) {
-        // Audio encoding to MP3
-        ffmpegArgs.push(
-            '-vn', // No video
-            '-acodec', 'libmp3lame',
-            '-b:a', `${bitrate}k`,
-            '-ar', '44100', // Sample rate
-            '-ac', '2', // Stereo
-            '-f', 'mp3'
-        );
-    } else {
-        // Video encoding to MP4
-        // Use h264 for video and aac for audio
-        ffmpegArgs.push(
-            '-vcodec', 'libx264',
-            '-preset', 'medium',
-            '-crf', '23',
-            '-acodec', 'aac',
-            '-b:a', '192k',
-            '-movflags', '+faststart', // Enable streaming
-            '-f', 'mp4'
-        );
-
-        // Add video bitrate limit if calculated bitrate is restrictive
-        if (bitrate < 5000) {
-            ffmpegArgs.push('-b:v', `${bitrate}k`);
-            // Remove CRF when using bitrate
-            const crfIndex = ffmpegArgs.indexOf('-crf');
-            if (crfIndex > -1) {
-                ffmpegArgs.splice(crfIndex, 2);
-            }
-        }
-    }
 
     ffmpegArgs.push('pipe:1'); // Output to stdout
 
@@ -312,8 +290,6 @@ async function encodeMedia(inputBuffer, mimeType, options = {}, onProgress = nul
  * @returns {Promise<{buffer: Buffer, mimeType: string, size: number}>}
  */
 async function encodeWithSizeReduction(inputBuffer, mimeType, onProgress = null) {
-    const isAudio = isAudioFormat(mimeType);
-
     // First attempt with default target size
     let result = await encodeMedia(inputBuffer, mimeType, { targetSize: TARGET_FILE_SIZE }, onProgress);
 
