@@ -5,6 +5,7 @@ const googleDriveService = require('./googleDrive');
 const katex = require('katex');
 const fs = require('fs');
 const path = require('path');
+const { PDFDocument, PDFName, PDFHexString } = require('pdf-lib');
 
 // PDF Generation CSS - shared with frontend via pdf-preview.css
 const PDF_CSS = `
@@ -133,6 +134,94 @@ function preprocessMarkdown(markdown) {
 }
 
 /**
+ * Extract metadata from markdown content
+ * @param {string} markdown - Markdown content
+ * @returns {{title?: string, subject?: string, keywords?: string[]}}
+ */
+function extractMetadata(markdown) {
+  const metadata = {};
+
+  // Extract title from first H1 heading
+  const h1Match = markdown.match(/^#\s+(.+)$/m);
+  if (h1Match) {
+    metadata.title = h1Match[1].trim();
+  }
+
+  // Extract subject from first paragraph after title
+  const lines = markdown.split('\n');
+  let foundTitle = false;
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      foundTitle = true;
+      continue;
+    }
+    if (foundTitle && line.trim() && !line.startsWith('#')) {
+      metadata.subject = line.trim().slice(0, 200);
+      break;
+    }
+  }
+
+  // Extract keywords from H2/H3 headings
+  const headingMatches = markdown.matchAll(/^#{2,3}\s+(.+)$/gm);
+  const keywords = [];
+  for (const match of headingMatches) {
+    const heading = match[1].trim();
+    // Only add unique keywords, max 10
+    if (keywords.length < 10 && !keywords.includes(heading)) {
+      keywords.push(heading);
+    }
+  }
+  if (keywords.length > 0) {
+    metadata.keywords = keywords;
+  }
+
+  return metadata;
+}
+
+/**
+ * Set PDF metadata using pdf-lib
+ * @param {Buffer} pdfBuffer - Original PDF buffer
+ * @param {string} markdown - Source markdown for metadata extraction
+ * @returns {Promise<Buffer>} - PDF buffer with updated metadata
+ */
+async function setPdfMetadata(pdfBuffer, markdown) {
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+  // Extract metadata from markdown
+  const metadata = extractMetadata(markdown);
+
+  // Set standard metadata using pdf-lib methods (except Producer)
+  if (metadata.title) {
+    pdfDoc.setTitle(metadata.title);
+  }
+  if (metadata.subject) {
+    pdfDoc.setSubject(metadata.subject);
+  }
+  if (metadata.keywords && metadata.keywords.length > 0) {
+    pdfDoc.setKeywords(metadata.keywords);
+  }
+
+  // Save first to ensure the Info dictionary is created by pdf-lib
+  const tempPdfBytes = await pdfDoc.save();
+
+  // Reload the PDF to access the Info dictionary from the trailer
+  const pdfDocWithInfo = await PDFDocument.load(tempPdfBytes);
+  const infoRef = pdfDocWithInfo.context.trailerInfo.Info;
+
+  if (infoRef) {
+    const infoDict = pdfDocWithInfo.context.lookup(infoRef);
+    if (infoDict) {
+      // Set Producer directly on the Info dict (pdf-lib resets setProducer() on save)
+      infoDict.set(PDFName.of('Producer'), PDFHexString.fromText('LevTolstoy'));
+      // Add the Website custom metadata field
+      infoDict.set(PDFName.of('Website'), PDFHexString.fromText('https://lev.gokhantekyildirim.me'));
+    }
+  }
+
+  return Buffer.from(await pdfDocWithInfo.save({ useObjectStreams: false }));
+}
+
+/**
  * Convert markdown to PDF buffer using md-to-pdf
  * @param {string} markdown - Markdown content
  * @returns {Promise<Buffer>} - PDF buffer
@@ -180,7 +269,8 @@ async function generatePdf(markdown) {
     throw new Error('PDF generation failed');
   }
 
-  return result.content;
+  // Apply metadata to PDF
+  return setPdfMetadata(result.content, markdown);
 }
 
 /**
@@ -222,5 +312,6 @@ function isConfigured() {
 module.exports = {
   generatePdf,
   uploadToDrive,
-  isConfigured
+  isConfigured,
+  extractMetadata
 };

@@ -34,7 +34,8 @@
     "katex": "^0.16.27",
     "md-to-pdf": "^5.2.5",
     "multer": "^1.4.5-lts.1",
-    "openai": "^4.77.0"
+    "openai": "^4.77.0",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.19"
