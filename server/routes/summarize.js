@@ -83,6 +83,8 @@ router.get('/status/:taskId', (req, res) => {
         summary: task.summary,
         filename: task.filename,
         progress: task.progress,
+        eta: task.eta || 0,
+        tps: task.tps || '0.0',
         error: task.error
     });
 });
@@ -109,15 +111,24 @@ async function processSummarization(taskId, markdown, model) {
             task.summary += chunk;
             totalTokens += chunk.length / 4; // Rough token estimate
 
-            // Update TPS every 1 second
+            // Update TPS and ETA every 1 second
             const now = Date.now();
             if (now - lastUpdateTime >= 1000) {
                 lastUpdateTime = now;
 
                 const elapsed = (now - streamStartTime) / 1000;
                 const tps = elapsed > 0 ? (totalTokens / elapsed).toFixed(1) : '0.0';
-
                 task.tps = tps;
+
+                // Calculate ETA based on progress
+                if (task.progress > 0 && task.progress < 100) {
+                    const elapsedSeconds = elapsed;
+                    const estimatedTotal = elapsedSeconds / (task.progress / 100);
+                    const remainingSeconds = estimatedTotal - elapsedSeconds;
+                    task.eta = Math.max(0, Math.round(remainingSeconds));
+                } else {
+                    task.eta = 0;
+                }
             }
 
             // Artificial progress increment up to 90%
