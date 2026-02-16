@@ -2,17 +2,19 @@ const mimeTypes = require('../utils/mimeTypes');
 const openaiService = require('./openai');
 const googleDriveService = require('./googleDrive');
 const s3Service = require('./s3');
+const mediaEncoder = require('./mediaEncoder');
 
 /**
  * Dosya tipini ve işlem yolunu belirler
  * @param {string} mimeType - Dosya MIME tipi
- * @returns {object} - { supported, direct, needsConversion, formatInfo }
+ * @returns {object} - { supported, direct, needsConversion, needsEncoding, formatInfo }
  */
 function analyzeFile(mimeType) {
     return {
         supported: mimeTypes.isSupported(mimeType),
         direct: mimeTypes.isDirect(mimeType),
         needsConversion: mimeTypes.needsConversion(mimeType),
+        needsEncoding: mimeTypes.needsEncoding(mimeType),
         formatInfo: mimeTypes.getFormatInfo(mimeType)
     };
 }
@@ -63,6 +65,41 @@ async function prepareFile(file, s3Url = null) {
 
         // Office dosyası dönüştürüldükten sonra S3 URL geçersiz olur
         s3Url = null;
+    }
+
+    // FFmpeg ile encode edilmesi gereken medya dosyaları
+    if (analysis.needsEncoding) {
+        const ffmpegAvailable = await mediaEncoder.isFFmpegAvailable();
+        if (!ffmpegAvailable) {
+            throw new Error(
+                `${analysis.formatInfo.name} dosyaları için FFmpeg gerekli. ` +
+                'FFmpeg yükleyin veya FFMPEG_PATH ortam değişkenini ayarlayın.'
+            );
+        }
+
+        console.log(`🎵 Medya dosyası MP3'e dönüştürülüyor: ${originalname}`);
+
+        try {
+            const result = await mediaEncoder.encodeWithSizeReduction(
+                processBuffer,
+                mimetype,
+                (progress) => {
+                    if (progress % 10 === 0) {
+                        console.log(`  Encoding progress: ${progress}%`);
+                    }
+                }
+            );
+
+            processBuffer = result.buffer;
+            processMimeType = result.mimeType;
+
+            console.log(`✅ Medya dönüştürme tamamlandı: ${(result.size / 1024 / 1024).toFixed(2)}MB`);
+
+            // Medya dönüştürüldükten sonra S3 URL geçersiz olur
+            s3Url = null;
+        } catch (err) {
+            throw new Error(`Medya dönüştürme hatası (${originalname}): ${err.message}`);
+        }
     }
 
     return {
@@ -131,6 +168,18 @@ function getSupportedFormats() {
             name: info.name,
             type: 'convert',
             requiresDriveApi: true
+        });
+    });
+
+    Object.entries(mimeTypes.SUPPORTED_FORMATS.encode).forEach(([mime, info]) => {
+        formats.push({
+            mimeType: mime,
+            extension: info.ext,
+            name: info.name,
+            type: 'encode',
+            outputFormat: info.outputFormat,
+            outputMime: info.outputMime,
+            requiresFFmpeg: true
         });
     });
 
