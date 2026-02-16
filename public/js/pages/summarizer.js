@@ -72,6 +72,19 @@ const SummarizerPage = {
 
                 if (progressBar) progressBar.style.width = `${status.progress || 0}%`;
 
+                // Update progress text with ETA and TPS
+                const progressWait = document.querySelector('#progress-section .text-slate-500');
+                if (progressWait) {
+                    let progressText = '';
+                    if (status.eta) {
+                        progressText += `ETA: ${status.eta}s`;
+                    }
+                    if (status.tps) {
+                        progressText += (progressText ? ' • ' : '') + `${status.tps} tok/s`;
+                    }
+                    progressWait.textContent = progressText || (window.i18n?.t('summarizer.wait') || 'Lütfen bekleyin');
+                }
+
                 if (status.summary) {
                     this.currentSummary = status.summary;
                     this.renderPreview(this.currentSummary);
