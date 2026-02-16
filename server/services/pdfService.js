@@ -187,18 +187,10 @@ function extractMetadata(markdown) {
 async function setPdfMetadata(pdfBuffer, markdown) {
   const pdfDoc = await PDFDocument.load(pdfBuffer);
 
-  // Set producer to LevTolstoy
-  pdfDoc.setProducer('LevTolstoy');
-
-  // Add website URL as custom metadata field in the Info dictionary
-  const infoDict = pdfDoc.catalog.get(PDFName.of('Info'));
-  if (infoDict) {
-    const info = pdfDoc.context.lookup(infoDict);
-    info.set(PDFName.of('Website'), PDFHexString.fromText('https://lev.gokhantekyildirim.me'));
-  }
-
-  // Extract and set metadata from markdown
+  // Extract metadata from markdown
   const metadata = extractMetadata(markdown);
+
+  // Set standard metadata using pdf-lib methods (except Producer)
   if (metadata.title) {
     pdfDoc.setTitle(metadata.title);
   }
@@ -209,7 +201,24 @@ async function setPdfMetadata(pdfBuffer, markdown) {
     pdfDoc.setKeywords(metadata.keywords);
   }
 
-  return Buffer.from(await pdfDoc.save());
+  // Save first to ensure the Info dictionary is created by pdf-lib
+  const tempPdfBytes = await pdfDoc.save();
+
+  // Reload the PDF to access the Info dictionary from the trailer
+  const pdfDocWithInfo = await PDFDocument.load(tempPdfBytes);
+  const infoRef = pdfDocWithInfo.context.trailerInfo.Info;
+
+  if (infoRef) {
+    const infoDict = pdfDocWithInfo.context.lookup(infoRef);
+    if (infoDict) {
+      // Set Producer directly on the Info dict (pdf-lib resets setProducer() on save)
+      infoDict.set(PDFName.of('Producer'), PDFHexString.fromText('LevTolstoy'));
+      // Add the Website custom metadata field
+      infoDict.set(PDFName.of('Website'), PDFHexString.fromText('https://lev.gokhantekyildirim.me'));
+    }
+  }
+
+  return Buffer.from(await pdfDocWithInfo.save({ useObjectStreams: false }));
 }
 
 /**
