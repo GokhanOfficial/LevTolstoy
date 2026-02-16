@@ -1,4 +1,4 @@
-// Desteklenen dosya formatları (Video formatları OpenAI API'de desteklenmediği için kaldırıldı)
+// Desteklenen dosya formatları
 
 const SUPPORTED_FORMATS = {
     // Direkt API'ye gönderilebilen formatlar
@@ -9,7 +9,7 @@ const SUPPORTED_FORMATS = {
         'image/webp': { ext: '.webp', name: 'WebP' },
         'image/gif': { ext: '.gif', name: 'GIF' },
 
-        // Audio
+        // Audio (directly supported)
         'audio/mpeg': { ext: '.mp3', name: 'MP3' },
         'audio/mp3': { ext: '.mp3', name: 'MP3' },
         'audio/wav': { ext: '.wav', name: 'WAV' },
@@ -45,13 +45,38 @@ const SUPPORTED_FORMATS = {
             name: 'Word (Legacy)',
             googleMime: 'application/vnd.google-apps.document'
         }
+    },
+
+    // FFmpeg ile MP3/MP4'e dönüştürülmesi gereken formatlar
+    encode: {
+        // Audio formats -> MP3
+        'audio/mp4': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/aac': { ext: '.aac', name: 'AAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/aacp': { ext: '.aac', name: 'AAC+', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/opus': { ext: '.opus', name: 'Opus', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/ogg': { ext: '.ogg', name: 'OGG', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/x-flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/x-aac': { ext: '.aac', name: 'AAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/x-m4a': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/x-opus': { ext: '.opus', name: 'Opus', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/webm': { ext: '.weba', name: 'WebM Audio', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+
+        // Video formats -> MP4
+        'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp4', outputMime: 'video/mp4' },
+        'video/3gpp': { ext: '.3gp', name: '3GP', outputFormat: 'mp4', outputMime: 'video/mp4' },
+        'video/webm': { ext: '.webm', name: 'WebM', outputFormat: 'mp4', outputMime: 'video/mp4' },
+        'video/x-m4v': { ext: '.m4v', name: 'M4V', outputFormat: 'mp4', outputMime: 'video/mp4' },
+        'video/avi': { ext: '.avi', name: 'AVI', outputFormat: 'mp4', outputMime: 'video/mp4' },
+        'video/x-msvideo': { ext: '.avi', name: 'AVI', outputFormat: 'mp4', outputMime: 'video/mp4' }
     }
 };
 
 // Tüm desteklenen MIME tipleri
 const ALL_SUPPORTED_MIMES = [
     ...Object.keys(SUPPORTED_FORMATS.direct),
-    ...Object.keys(SUPPORTED_FORMATS.convert)
+    ...Object.keys(SUPPORTED_FORMATS.convert),
+    ...Object.keys(SUPPORTED_FORMATS.encode)
 ];
 
 // Dosya uzantılarından MIME tipi bulma
@@ -60,6 +85,9 @@ Object.entries(SUPPORTED_FORMATS.direct).forEach(([mime, info]) => {
     EXTENSION_TO_MIME[info.ext] = mime;
 });
 Object.entries(SUPPORTED_FORMATS.convert).forEach(([mime, info]) => {
+    EXTENSION_TO_MIME[info.ext] = mime;
+});
+Object.entries(SUPPORTED_FORMATS.encode).forEach(([mime, info]) => {
     EXTENSION_TO_MIME[info.ext] = mime;
 });
 
@@ -78,17 +106,27 @@ function isDirect(mimeType) {
 }
 
 /**
- * MIME tipinin dönüştürme gerektirip gerektirmediğini kontrol eder
+ * MIME tipinin dönüştürme gerektirip gerektirmediğini kontrol eder (Google Drive)
  */
 function needsConversion(mimeType) {
     return mimeType in SUPPORTED_FORMATS.convert;
 }
 
 /**
+ * MIME tipinin FFmpeg ile kodlama gerektirip gerektirmediğini kontrol eder
+ */
+function needsEncoding(mimeType) {
+    return mimeType in SUPPORTED_FORMATS.encode;
+}
+
+/**
  * Format bilgisini döndürür
  */
 function getFormatInfo(mimeType) {
-    return SUPPORTED_FORMATS.direct[mimeType] || SUPPORTED_FORMATS.convert[mimeType] || null;
+    return SUPPORTED_FORMATS.direct[mimeType] ||
+           SUPPORTED_FORMATS.convert[mimeType] ||
+           SUPPORTED_FORMATS.encode[mimeType] ||
+           null;
 }
 
 module.exports = {
@@ -98,5 +136,6 @@ module.exports = {
     isSupported,
     isDirect,
     needsConversion,
+    needsEncoding,
     getFormatInfo
 };
