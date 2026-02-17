@@ -246,3 +246,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Export for use in other modules
 window.i18n = { t, setLanguage, getLanguage };
+
+/**
+ * Update language button icons to show flag emojis
+ */
+function updateLanguageButtons() {
+    const langTr = document.getElementById('lang-tr');
+    const langEn = document.getElementById('lang-en');
+
+    if (langTr) {
+        langTr.innerHTML = '<span class="text-lg" role="img" aria-label="TR">🇹🇷</span>';
+        langTr.title = 'Türkçe';
+    }
+
+    if (langEn) {
+        langEn.innerHTML = '<span class="text-lg" role="img" aria-label="EN">🇬🇧</span>';
+        langEn.title = 'English';
+    }
+}
+
+// Initialize flag emojis on load
+document.addEventListener('DOMContentLoaded', () => {
+    updateLanguageButtons();
+});
