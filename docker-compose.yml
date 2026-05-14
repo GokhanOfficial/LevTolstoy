@@ -1,0 +1,31 @@
+services:
+  levtolstoy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: levtolstoy:latest
+    container_name: levtolstoy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      # Local cache fallback is used when S3 is not configured.
+      - levtolstoy-cache:/app/public/cache
+      # For Google Drive OAuth in production, prefer GOOGLE_TOKEN in .env.
+      # If you need file-based token persistence, uncomment the line below
+      # after creating ./server/.google-token.json locally with npm run auth.
+      # - ./server/.google-token.json:/app/server/.google-token.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  levtolstoy-cache:
