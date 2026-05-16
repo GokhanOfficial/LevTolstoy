@@ -5,6 +5,29 @@
 let activeConversionTaskId = null;
 let cancelRequested = false;
 
+function formatProgressDuration(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return '-';
+    if (seconds < 60) return `${Math.ceil(seconds)} sn`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.ceil(seconds % 60);
+    return `${minutes} dk ${secs} sn`;
+}
+
+function formatProgressPhase(phase) {
+    const labels = {
+        queued: 'Sırada',
+        loading: 'Dosya okunuyor',
+        fetching: 'Dosya indiriliyor',
+        preparing: 'Hazırlanıyor',
+        'media-encoding': 'FFmpeg dönüşümü',
+        'ai-conversion': 'AI metinleştirme',
+        completed: 'Tamamlandı',
+        failed: 'Hata',
+        cancelled: 'İptal edildi'
+    };
+    return labels[phase] || phase || 'İşleniyor';
+}
+
 function updateConversionProgress(status) {
     const progressBar = document.getElementById('progress-bar');
     const progressTitle = document.getElementById('progress-title');
@@ -17,17 +40,31 @@ function updateConversionProgress(status) {
     if (progressBar) progressBar.style.width = `${progress}%`;
     if (progressTitle) progressTitle.textContent = status.message || 'Dönüştürülüyor...';
     if (progressFilename) progressFilename.textContent = status.currentFile || '';
-    if (progressPhase) progressPhase.textContent = status.phase || status.status || 'processing';
-    if (progressPercent) progressPercent.textContent = `${progress}%`;
+    if (progressPhase) progressPhase.textContent = formatProgressPhase(status.phase || status.status);
+    if (progressPercent) progressPercent.textContent = `${progress}% • kalan ${formatProgressDuration(status.etaSeconds)}`;
 
     if (progressDetail) {
         const media = status.mediaProgress;
+        const ai = status.aiProgress;
         if (media) {
-            const bitrate = media.bitrateKbps ? ` • ${media.bitrateKbps}kbps` : '';
-            const attempt = media.attempt ? ` • deneme ${media.attempt}` : '';
-            progressDetail.textContent = `FFmpeg: ${media.percent || 0}%${bitrate}${attempt}`;
+            const bitrate = media.bitrateKbps ? `Bitrate: ${media.bitrateKbps}kbps` : 'Bitrate hesaplanıyor';
+            const attempt = media.attempt ? `Deneme: ${media.attempt}` : '';
+            const duration = media.duration ? `Süre: ${formatProgressDuration(media.duration)}` : '';
+            const elapsed = media.elapsedSeconds ? `Geçen: ${formatProgressDuration(media.elapsedSeconds)}` : '';
+            const eta = `Kalan: ${formatProgressDuration(media.etaSeconds ?? status.etaSeconds)}`;
+            progressDetail.innerHTML = `
+                <span class="block text-indigo-300">FFmpeg: ${media.percent || 0}% • ${bitrate}${attempt ? ` • ${attempt}` : ''}</span>
+                <span class="block">${[duration, elapsed, eta].filter(Boolean).join(' • ')}</span>
+            `;
+        } else if (ai) {
+            const chars = typeof ai.chars === 'number' ? ai.chars.toLocaleString('tr-TR') : '0';
+            const expected = typeof ai.expectedChars === 'number' ? ai.expectedChars.toLocaleString('tr-TR') : '10.000';
+            progressDetail.innerHTML = `
+                <span class="block text-indigo-300">AI ilerleme: ${ai.percent || 0}% • ${chars}/${expected} karakter</span>
+                <span class="block">Geçen: ${formatProgressDuration(ai.elapsedSeconds)} • Kalan: ${formatProgressDuration(ai.etaSeconds ?? status.etaSeconds)}</span>
+            `;
         } else {
-            progressDetail.textContent = status.message || '';
+            progressDetail.textContent = `${status.message || ''}${status.etaSeconds ? ` • Kalan: ${formatProgressDuration(status.etaSeconds)}` : ''}`;
         }
     }
 }
@@ -172,7 +209,9 @@ const HomePage = {
             const taskId = startResult.taskId;
             activeConversionTaskId = taskId;
 
-            // Poll for status every 2 seconds
+            updateConversionProgress({ progress: 0, phase: 'queued', message: 'Dönüştürme başlatılıyor...', etaSeconds: 60 });
+
+            // Poll for status every second so FFmpeg/upload-like progress feels real-time
             let completed = false;
             while (!completed) {
                 const status = await window.api.getConversionStatus(taskId);
@@ -218,8 +257,7 @@ const HomePage = {
                     throw new Error(status.error || 'Conversion failed');
 
                 } else {
-                    // Wait 2 seconds before next poll
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 

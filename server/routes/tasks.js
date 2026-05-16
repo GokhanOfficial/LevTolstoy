@@ -17,6 +17,7 @@ const TaskStatus = {
 };
 
 function createTask(files) {
+    const now = Date.now();
     return {
         id: crypto.randomUUID(),
         status: TaskStatus.PENDING,
@@ -27,11 +28,39 @@ function createTask(files) {
         mediaProgress: null,
         currentFile: null,
         error: null,
-        createdAt: Date.now(),
+        createdAt: now,
+        startedAt: null,
+        phaseStartedAt: now,
+        estimatedTotalSeconds: null,
+        etaSeconds: null,
+        aiProgress: null,
+        aiStartedAt: null,
+        aiChars: 0,
         files: files.map(f => f.filename).join(', '),
         abortController: new AbortController(),
         ffmpegProcess: null
     };
+}
+
+function setPhase(task, phase, patch = {}) {
+    if (task.phase !== phase) {
+        task.phaseStartedAt = Date.now();
+    }
+    updateTask(task, { phase, ...patch });
+}
+
+function calculateEta(task) {
+    if (task.status !== TaskStatus.PROCESSING) return null;
+
+    if (Number.isFinite(task.etaSeconds)) {
+        return Math.max(0, Math.ceil(task.etaSeconds));
+    }
+
+    const start = task.startedAt || task.createdAt;
+    const elapsed = Math.max((Date.now() - start) / 1000, 1);
+    const progress = Math.max(task.progress || 0, 1);
+    if (progress >= 100) return 0;
+    return Math.max(0, Math.ceil((elapsed / progress) * (100 - progress)));
 }
 
 function sanitizeTask(task) {
@@ -44,7 +73,12 @@ function sanitizeTask(task) {
         progress: task.progress,
         mediaProgress: task.mediaProgress,
         currentFile: task.currentFile,
-        error: task.error
+        error: task.error,
+        startedAt: task.startedAt,
+        phaseStartedAt: task.phaseStartedAt,
+        estimatedTotalSeconds: task.estimatedTotalSeconds,
+        etaSeconds: calculateEta(task),
+        aiProgress: task.aiProgress
     };
 }
 
@@ -238,56 +272,88 @@ async function processTask(taskId, files, model) {
     if (!task) return;
 
     try {
-        updateTask(task, {
+        setPhase(task, 'loading', {
             status: TaskStatus.PROCESSING,
-            phase: 'loading',
             message: 'Dosyalar okunuyor',
-            progress: 5
+            progress: 5,
+            startedAt: Date.now(),
+            estimatedTotalSeconds: 75,
+            etaSeconds: 70
         });
 
         const fileInputs = await buildFileInputs(task, files);
         assertNotCancelled(task);
 
-        updateTask(task, {
+        setPhase(task, 'preparing', {
             progress: 25,
-            phase: 'preparing',
             message: 'Medya ve dokümanlar hazırlanıyor',
-            currentFile: null
+            currentFile: null,
+            etaSeconds: 60
         });
 
         const markdown = await fileHandler.processMultipleFiles(fileInputs, model, (chunk) => {
             assertNotCancelled(task);
             task.markdown += chunk;
-            if (task.progress < 98) task.progress += 1;
+
+            const elapsedAiSeconds = Math.max((Date.now() - (task.aiStartedAt || Date.now())) / 1000, 0);
+            const charProgress = Math.min(task.markdown.length / 10000, 1);
+            const timeProgress = Math.min(elapsedAiSeconds / 60, 1);
+            const blendedAiProgress = Math.max(charProgress * 0.55 + timeProgress * 0.45, task.aiProgress?.fraction || 0);
+            const boundedAiProgress = Math.min(blendedAiProgress, 0.98);
+            const progress = Math.min(99, Math.floor(80 + boundedAiProgress * 19));
+            const remainingByTime = Math.max(0, 60 - elapsedAiSeconds);
+            const remainingByChars = task.markdown.length > 0
+                ? Math.max(0, ((10000 - task.markdown.length) / Math.max(task.markdown.length, 1)) * elapsedAiSeconds)
+                : remainingByTime;
+
+            task.progress = Math.max(task.progress, progress);
+            task.etaSeconds = Math.ceil(Math.min(Math.max(remainingByTime, 5), Math.max(remainingByChars, 5), 60));
+            task.aiProgress = {
+                fraction: boundedAiProgress,
+                percent: Math.round(boundedAiProgress * 100),
+                elapsedSeconds: Math.round(elapsedAiSeconds),
+                etaSeconds: task.etaSeconds,
+                chars: task.markdown.length,
+                expectedChars: 10000
+            };
         }, {}, {
             signal: task.abortController.signal,
             onFileStart: ({ file, index, total }) => {
-                updateTask(task, {
+                setPhase(task, 'preparing', {
                     currentFile: file.originalname,
-                    phase: 'preparing',
                     message: `Dosya işleniyor (${index + 1}/${total}): ${file.originalname}`,
                     progress: 25 + Math.floor((index / total) * 35),
-                    mediaProgress: null
+                    mediaProgress: null,
+                    etaSeconds: 60
                 });
             },
             onMediaProgress: (progress) => {
-                updateTask(task, {
-                    phase: 'media-encoding',
-                    message: `FFmpeg ile MP3'e dönüştürülüyor (${progress.percent || 0}%)`,
-                    progress: Math.min(80, 30 + Math.floor((progress.percent || 0) * 0.45)),
-                    mediaProgress: progress
+                const mediaPercent = progress.percent || 0;
+                const elapsedPhaseSeconds = Math.max((Date.now() - task.phaseStartedAt) / 1000, 1);
+                const mediaEta = mediaPercent > 0 ? Math.ceil((elapsedPhaseSeconds / mediaPercent) * (100 - mediaPercent)) : null;
+                setPhase(task, 'media-encoding', {
+                    message: `FFmpeg ile MP3'e dönüştürülüyor (${mediaPercent}%)`,
+                    progress: Math.min(80, 30 + Math.floor(mediaPercent * 0.45)),
+                    mediaProgress: {
+                        ...progress,
+                        etaSeconds: mediaEta,
+                        elapsedSeconds: Math.round(elapsedPhaseSeconds)
+                    },
+                    etaSeconds: mediaEta
                 });
             },
             registerProcess: (child) => {
                 task.ffmpegProcess = child;
             },
             onAiStart: () => {
-                updateTask(task, {
-                    phase: 'ai-conversion',
+                setPhase(task, 'ai-conversion', {
                     message: 'AI ile metinleştiriliyor',
                     progress: Math.max(task.progress, 80),
                     mediaProgress: null,
-                    ffmpegProcess: null
+                    ffmpegProcess: null,
+                    aiStartedAt: Date.now(),
+                    aiProgress: { fraction: 0, percent: 0, elapsedSeconds: 0, etaSeconds: 60, chars: 0, expectedChars: 10000 },
+                    etaSeconds: 60
                 });
             }
         });

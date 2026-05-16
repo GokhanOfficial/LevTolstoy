@@ -128,7 +128,7 @@ function getUploadDetail(entry) {
     const total = formatFileSize(entry.upload.total || entry.file.size);
     const speed = formatFileSize(entry.upload.averageSpeed || entry.upload.speed || 0) + '/sn';
     const eta = formatDuration(entry.upload.etaSeconds);
-    return `${loaded} / ${total} • ${speed} • kalan ${eta}`;
+    return `Yüklenen: ${loaded} / ${total} • Hız: ${speed} • Kalan süre: ${eta}`;
 }
 
 function renderFileList() {
@@ -160,15 +160,16 @@ function renderFileList() {
         }
 
         return `
-        <div class="file-item" data-index="${index}">
-            <div class="flex items-center gap-3 min-w-0">
+        <div class="file-item flex-col sm:flex-row sm:items-center gap-3" data-index="${index}">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
                 <div class="file-icon ${getFileIconClass(entry.file.name)}">${getFileExtLabel(entry.file.name)}</div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                     <p class="font-medium text-slate-200 text-sm truncate">${entry.file.name}</p>
-                    <p class="text-xs text-slate-500">${formatFileSize(entry.file.size)}${detailText ? ` • ${detailText}` : ''}</p>
+                    <p class="text-xs text-slate-500">${formatFileSize(entry.file.size)}</p>
+                    ${detailText ? `<p class="text-xs text-indigo-300 mt-1 whitespace-normal">${detailText}</p>` : ''}
                 </div>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 self-end sm:self-auto">
                 ${progressHtml}
                 <span class="status-badge ${statusClass}">${statusText}</span>
                 <button class="remove-file text-slate-500 hover:text-red-400 transition-colors" data-index="${index}" title="${entry.status === 'uploading' ? 'Yüklemeyi iptal et' : 'Kaldır'}">
