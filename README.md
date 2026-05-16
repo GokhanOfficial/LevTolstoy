@@ -1,9 +1,11 @@
-# LevTolstoy
+# LevTolstoy 🖋️
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)
 
-**LevTolstoy** is a powerful document-to-markdown converter powered by **Google Gemini AI**. It allows you to convert PDF, PPTX, DOCX files, and images into clean, editable Markdown format, complete with a built-in split-view editor.
+**LevTolstoy** is an advanced AI-powered tool that converts **PDF, PPTX, DOCX, XLSX** files, and **Images** into clean, editable **Markdown**. It leverages the power of Large Language Models (LLMs) via the **OpenAI API** standard (support for GPT-4o, Gemini via proxy, and others).
+
+Beyond conversion, it features a robust Markdown editor, a document summarizer, and a modern, theme-aware user interface.
 
 <p align="center">
   <img src="docs/screenshots/1.jpg" alt="LevTolstoy App Screenshot 1" width="45%">
@@ -12,110 +14,153 @@
 
 ## ✨ Features
 
--   **AI-Powered Conversion:** Utilizes Google's Gemini 1.5/2.0 Pro/Flash models for high-accuracy text extraction and formatting.
--   **Multi-Format Support:** Convert PDF, PPTX (PowerPoint), DOCX (Word), and Images (PNG, JPG, WEBP).
--   **Rich Markdown Editor:** Built-in editor with syntax highlighting, live preview, and split view.
--   **PDF Export:** Export your edited Markdown directly to PDF with LaTeX (KaTeX) support for math formulas.
--   **Multilingual Interface:** Fully localized in English and Turkish.
--   **Modern UI:** Beautiful, responsive interface with Dark/Light mode support.
+-   **🤖 AI-Powered Conversion:** Extracts text and complex layouts using state-of-the-art LLMs (default: `gpt-4o`).
+-   **📁 Multi-Format Support:**
+    -   **Documents:** PDF, Text, Markdown
+    -   **Office:** PPTX (PowerPoint), DOCX (Word), XLSX (Excel) _(Requires Google Drive API)_
+    -   **Images:** PNG, JPG, WEBP, GIF
+    -   **Audio:** MP3, WAV, OGG
+-   **☁️ Cloud Storage:** Integrated S3 support (AWS, MinIO, Cloudflare R2) for handling large file uploads securely.
+-   **📝 Rich Markdown Editor:** built-in editor with syntax highlighting, live preview, and split view.
+-   **📑 Summarizer:** AI-driven document summarization tool.
+-   **🎨 Modern UI:** Beautiful interface with **Dark/Light** theme support.
+-   **🌍 Multilingual:** Fully localized (English & Turkish).
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
--   Node.js 18 or higher
--   A Google Gemini API Key
--   (Optional) Google Cloud Console project for Google Drive API (required for PPTX/DOCX conversion)
-
-### 🔑 Google Drive API Setup (Important for PPTX/DOCX)
-
-Since Vercel/Railway are serverless/cloud environments, you cannot perform interactive login (OAuth consent screen) there. You must generate a token locally and add it as an environment variable.
-
-1.  **Create Google Cloud Project:**
-    -   Go to [Google Cloud Console](https://console.cloud.google.com/).
-    -   Create a new project.
-    -   Enable **Google Drive API**.
-    -   Go to **Credentials** > **Create Credentials** > **OAuth 2.0 Client ID**.
-    -   Select **Desktop App**.
-    -   Download the JSON file or copy Client ID and Client Secret.
-
-2.  **Generate Token Locally:**
-    -   Run the project locally first.
-    -   Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to your local `.env`.
-    -   Run `npm run auth`.
-    -   Complete the login in your browser.
-    -   This will create a `.google-token.json` file in `server/` folder.
-
-3.  **Prepare for Deployment:**
-    -   Open `.google-token.json` and copy its entire content.
-    -   Minify the JSON (remove newlines/spaces) to a single line string.
-    -   You will use this string as the `GOOGLE_TOKEN` environment variable in Vercel/Railway.
+-   **Node.js 20** or higher.
+-   **OpenAI API Key** (or a compatible API like OpenRouter, Gemini Proxy).
+-   **(Recommended)** S3-compatible object storage (AWS S3, MinIO, R2).
+-   **(Optional)** Google Cloud Project for Office file conversion.
 
 ### Installation
 
-1.  Clone the repository:
+1.  **Clone the repository:**
     ```bash
     git clone https://github.com/GokhanOfficial/LevTolstoy.git
     cd LevTolstoy
     ```
 
-2.  Install dependencies:
+2.  **Install dependencies:**
     ```bash
     npm install
-    # or
-    yarn install
     ```
 
-3.  Configure environment variables:
-    Copy `.env.example` to `.env` and fill in your API keys.
+3.  **Configuration:**
+    Copy `.env.example` to `.env` and configure your keys.
     ```bash
     cp .env.example .env
     ```
-    
-    Update `.env`:
+
+    **Key Environment Variables:**
     ```env
-    GEMINI_API_KEY=your_gemini_api_key
-    # Optional: Google Drive config for Office files
-    GOOGLE_CLIENT_ID=...
-    GOOGLE_CLIENT_SECRET=...
+    # AI Provider (OpenAI Compatible)
+    OPENAI_API_KEY=sk-...
+    OPENAI_BASE_URL=https://api.openai.com/v1 # or your proxy URL
+
+    # Storage (S3) - Optional but recommended for production
+    S3_ENDPOINT=https://s3.eu-central-1.amazonaws.com
+    S3_REGION=eu-central-1
+    S3_BUCKET_NAME=my-bucket
+    S3_ACCESS_KEY_ID=...
+    S3_SECRET_ACCESS_KEY=...
     ```
 
-4.  Start the development server:
+4.  **Google Drive Setup (for Office Files):**
+    _Required only if you want to convert .pptx, .docx, .xlsx files._
+    
+    1.  Create a project in [Google Cloud Console](https://console.cloud.google.com/).
+    2.  Enable **Google Drive API**.
+    3.  Create OAuth 2.0 Credentials (Desktop App) and download Client ID/Secret.
+    4.  Add them to `.env`:
+        ```env
+        GOOGLE_CLIENT_ID=...
+        GOOGLE_CLIENT_SECRET=...
+        ```
+    5.  Run the auth script locally to generate a token:
+        ```bash
+        npm run auth
+        ```
+        _This will create a `.google-token.json` file. For production, you can copy this file content into the `GOOGLE_TOKEN` env variable._
+
+5.  **Start the server:**
     ```bash
     npm run dev
     ```
+    Access at `http://localhost:3000`.
 
-    Visit `http://localhost:3000` in your browser.
+## 📦 Deployment
 
-## ☁️ Deployment
+### Docker Compose
 
-### Deploy to Railway
+The project now includes `Dockerfile` and `docker-compose.yml` files that are compatible with the existing `.env` structure.
 
-Railway is a great option for deploying Node.js applications with minimal configuration.
+1.  Copy `.env.example` to `.env` and fill in the values:
+    ```bash
+    cp .env.example .env
+    ```
 
-1.  Sign up at [Railway.app](https://railway.app/).
-2.  Click **"New Project"** and select **"Deploy from GitHub repo"**.
-3.  Select `GokhanOfficial/LevTolstoy`.
-4.  Add the required environment variables (`GEMINI_API_KEY`, etc.) in the Railway dashboard.
-5.  Railway will automatically detect the `package.json` and deploy your app.
+2.  Build the image and start the application:
+    ```bash
+    docker compose up --build -d
+    ```
 
-### Deploy to Vercel
+3.  Check status:
+    ```bash
+    docker compose ps
+    ```
 
-The project includes a `vercel.json` configuration for easy deployment on Vercel.
+4.  Follow logs:
+    ```bash
+    docker compose logs -f levtolstoy
+    ```
 
-1.  Install Vercel CLI: `npm i -g vercel`
-2.  Run `vercel` in the project root.
-3.  Link your project and deploy.
-4.  Remember to set your Environment Variables in the Vercel Project Settings.
+5.  Stop the application:
+    ```bash
+    docker compose down
+    ```
 
-Alternatively, connect your GitHub repository to Vercel dashboard and deploy.
+Default URL: `http://localhost:3000`. If you change `PORT` in `.env`, Compose uses the same value for the port mapping.
+
+**Notes:**
+-   `docker-compose.yml` passes `.env` directly into the container with `env_file`.
+-   If S3 is not configured, temporary files are persisted in the `levtolstoy-cache` volume.
+-   Chromium and required fonts are installed in the runtime image for Markdown → PDF features.
+-   For Google Drive OAuth in production, using the `GOOGLE_TOKEN` env variable is recommended. If file-based token persistence is required, uncomment the `./server/.google-token.json` volume line in `docker-compose.yml`.
+
+### Docker CLI
+
+To run without Compose:
+
+```bash
+docker build -t levtolstoy:latest .
+docker run --rm -p 3000:3000 --env-file .env -v levtolstoy-cache:/app/public/cache levtolstoy:latest
+```
+
+### Dokploy / Nixpacks
+
+This project is optimized for deployment using **Docker** or **Nixpacks** (used by Dokploy, Railway, etc.).
+
+**Requirements:**
+-   Ensure your build environment uses **Node.js 20**.
+-   The project includes a `nixpacks.toml` configuration for seamless deployment on Dokploy.
+
+**Persistent Google Token in Production:**
+Since the Google Refresh Token expires in 7 days for "Testing" projects:
+1.  Go to Google Cloud Console > **OAuth consent screen**.
+2.  Set status to **"PUBLISH APP"** (Production).
+3.  Generate the token locally (`npm run auth`).
+4.  Copy the JSON content of `.google-token.json` and set it as `GOOGLE_TOKEN` environment variable in your deployment platform.
 
 ## 🛠️ Built With
 
--   **Backend:** Express.js, Multer
--   **AI:** Google Generative AI SDK (Gemini)
--   **Frontend:** HTML5, TailwindCSS, Vanilla JS
--   **Tools:** Marked.js, Highlight.js, KaTeX, Puppeteer (for PDF generation)
+-   **Backend:** Node.js, Express, AWS SDK v3
+-   **Frontend:** HTML5, TailwindCSS (Vanilla JS)
+-   **AI Integration:** OpenAI SDK
+-   **Storage:** S3 (AWS SDK)
+-   **Tools:** Marked.js, Highlight.js, KaTeX
 
 ## 📄 License
 
