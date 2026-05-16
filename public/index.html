@@ -143,6 +143,7 @@
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">JPG</span>
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">MP3</span>
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">WAV</span>
+            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">OGG</span>
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">M4A</span>
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">OPUS</span>
             <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">FLAC</span>
@@ -216,17 +217,28 @@
     <!-- Progress Section -->
     <section id="progress-section" class="max-w-4xl mx-auto mb-8 hidden">
       <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
-        <div class="flex items-center gap-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-          <div>
-            <p class="font-medium text-slate-200" data-i18n="progress.converting">Dönüştürülüyor...</p>
-            <p id="progress-filename" class="text-sm text-slate-400"></p>
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+            <div>
+              <p id="progress-title" class="font-medium text-slate-200" data-i18n="progress.converting">Dönüştürülüyor...</p>
+              <p id="progress-filename" class="text-sm text-slate-400"></p>
+              <p id="progress-detail" class="text-xs text-slate-500 mt-1"></p>
+            </div>
           </div>
+          <button id="cancel-conversion-btn"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors">
+            İptal Et
+          </button>
         </div>
         <div class="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
           <div id="progress-bar"
             class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-300"
             style="width: 0%"></div>
+        </div>
+        <div class="mt-2 flex justify-between text-xs text-slate-500">
+          <span id="progress-phase">Hazırlanıyor</span>
+          <span id="progress-percent">0%</span>
         </div>
       </div>
     </section>

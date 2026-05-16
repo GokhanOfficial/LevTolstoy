@@ -6,11 +6,12 @@ const fs = require('fs');
 const crypto = require('crypto');
 const s3Service = require('../services/s3');
 const mimeTypes = require('../utils/mimeTypes');
+const config = require('../config');
 
 // Cache directory (fallback when S3 is not configured)
 const CACHE_DIR = path.join(__dirname, '../../public/cache');
 const CACHE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+const MAX_FILE_SIZE = config.media.maxUploadSizeMb * 1024 * 1024;
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
@@ -179,7 +180,7 @@ router.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
-                error: 'Dosya boyutu 100 MB limitini aşıyor',
+                error: `Dosya boyutu ${config.media.maxUploadSizeMb} MB limitini aşıyor`,
                 errorKey: 'errors.fileTooLarge'
             });
         }

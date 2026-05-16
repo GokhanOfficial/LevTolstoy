@@ -53,12 +53,13 @@ function getOpenAIContentType(mimeType) {
 /**
  * Get audio format from MIME type
  * @param {string} mimeType - Audio MIME tipi
- * @returns {string} - Audio format (wav, mp3)
+ * @returns {string} - Audio format (wav, mp3, ogg)
  */
 function getAudioFormat(mimeType) {
+    if (mimeType.includes('ogg')) return 'ogg';
     if (mimeType.includes('wav')) return 'wav';
     if (mimeType.includes('mp3') || mimeType.includes('mpeg')) return 'mp3';
-    return 'wav'; // default
+    return 'mp3'; // converted media defaults to mp3
 }
 
 /**

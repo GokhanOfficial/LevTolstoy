@@ -2,6 +2,36 @@
  * Home Page Logic (Index)
  */
 
+let activeConversionTaskId = null;
+let cancelRequested = false;
+
+function updateConversionProgress(status) {
+    const progressBar = document.getElementById('progress-bar');
+    const progressTitle = document.getElementById('progress-title');
+    const progressFilename = document.getElementById('progress-filename');
+    const progressDetail = document.getElementById('progress-detail');
+    const progressPhase = document.getElementById('progress-phase');
+    const progressPercent = document.getElementById('progress-percent');
+
+    const progress = status.progress || 0;
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (progressTitle) progressTitle.textContent = status.message || 'Dönüştürülüyor...';
+    if (progressFilename) progressFilename.textContent = status.currentFile || '';
+    if (progressPhase) progressPhase.textContent = status.phase || status.status || 'processing';
+    if (progressPercent) progressPercent.textContent = `${progress}%`;
+
+    if (progressDetail) {
+        const media = status.mediaProgress;
+        if (media) {
+            const bitrate = media.bitrateKbps ? ` • ${media.bitrateKbps}kbps` : '';
+            const attempt = media.attempt ? ` • deneme ${media.attempt}` : '';
+            progressDetail.textContent = `FFmpeg: ${media.percent || 0}%${bitrate}${attempt}`;
+        } else {
+            progressDetail.textContent = status.message || '';
+        }
+    }
+}
+
 const HomePage = {
     mount() {
         console.log('HomePage mounted');
@@ -21,6 +51,17 @@ const HomePage = {
         const convertBtn = document.getElementById('convert-btn');
         if (convertBtn) {
             convertBtn.addEventListener('click', this.handleConvert);
+        }
+
+        const cancelBtn = document.getElementById('cancel-conversion-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', async () => {
+                if (!activeConversionTaskId) return;
+                cancelRequested = true;
+                cancelBtn.disabled = true;
+                cancelBtn.textContent = 'İptal ediliyor...';
+                await window.api.cancelConversion(activeConversionTaskId);
+            });
         }
 
         // View tabs
@@ -103,7 +144,7 @@ const HomePage = {
             progressFilename.textContent = cachedFiles.length === 1 ? cachedFiles[0].filename : `${cachedFiles.length} dosya`;
         }
 
-        const progressBar = document.getElementById('progress-bar');
+        const cancelBtn = document.getElementById('cancel-conversion-btn');
 
         try {
             // Update all file statuses
@@ -112,6 +153,12 @@ const HomePage = {
             // Get selected model
             const modelSelect = document.getElementById('model-select');
             const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
+
+            cancelRequested = false;
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = 'İptal Et';
+            }
 
             // Start conversion task
             const startResult = await window.api.startConversion(cachedFiles, selectedModel);
@@ -123,14 +170,14 @@ const HomePage = {
             }
 
             const taskId = startResult.taskId;
+            activeConversionTaskId = taskId;
 
             // Poll for status every 2 seconds
             let completed = false;
             while (!completed) {
                 const status = await window.api.getConversionStatus(taskId);
 
-                // Update progress bar
-                if (progressBar) progressBar.style.width = `${status.progress || 0}%`;
+                updateConversionProgress(status);
 
                 // Update preview with partial result
                 if (status.markdown) {
@@ -161,6 +208,12 @@ const HomePage = {
                     cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'done'));
                     window.utils.showToast(window.i18n?.t('toast.conversionComplete') || 'Conversion complete!', 'success');
 
+                } else if (status.status === 'cancelled') {
+                    completed = true;
+                    cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'cancelled'));
+                    window.utils.showToast('Dönüştürme iptal edildi', 'info');
+                    if (progressSection) progressSection.classList.add('hidden');
+                    activeConversionTaskId = null;
                 } else if (status.status === 'failed') {
                     throw new Error(status.error || 'Conversion failed');
 
@@ -170,11 +223,13 @@ const HomePage = {
                 }
             }
 
+            activeConversionTaskId = null;
+
         } catch (error) {
             console.error('Conversion error:', error);
-            cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, 'error'));
+            cachedFiles.forEach((_, i) => window.fileUpload.updateFileStatus(i, cancelRequested ? 'cancelled' : 'error'));
 
-            window.utils.showToast(error.message || window.i18n?.t('toast.conversionFailed') || 'Conversion failed', 'error');
+            window.utils.showToast(cancelRequested ? 'Dönüştürme iptal edildi' : (error.message || window.i18n?.t('toast.conversionFailed') || 'Conversion failed'), cancelRequested ? 'info' : 'error');
             if (progressSection) progressSection.classList.add('hidden');
 
             // Handling missing files / retry logic
@@ -195,6 +250,12 @@ const HomePage = {
             }
         }
 
+        activeConversionTaskId = null;
+        cancelRequested = false;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'İptal Et';
+        }
         if (convertBtn) convertBtn.disabled = false;
     }
 };

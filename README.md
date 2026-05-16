@@ -19,7 +19,8 @@ Beyond conversion, it features a robust Markdown editor, a document summarizer, 
     -   **Documents:** PDF, Text, Markdown
     -   **Office:** PPTX (PowerPoint), DOCX (Word), XLSX (Excel) _(Requires Google Drive API)_
     -   **Images:** PNG, JPG, WEBP, GIF
-    -   **Audio:** MP3, WAV, OGG
+    -   **Audio:** MP3, WAV, OGG, M4A, AAC, OPUS, FLAC, WebM Audio _(FFmpeg conversion when needed)_
+    -   **Video:** MP4, MOV, AVI, MKV, WebM, 3GP, M4V, MPEG, WMV, FLV _(audio is extracted and converted to MP3)_
 -   **☁️ Cloud Storage:** Integrated S3 support (AWS, MinIO, Cloudflare R2) for handling large file uploads securely.
 -   **📝 Rich Markdown Editor:** built-in editor with syntax highlighting, live preview, and split view.
 -   **📑 Summarizer:** AI-driven document summarization tool.
@@ -34,6 +35,7 @@ Beyond conversion, it features a robust Markdown editor, a document summarizer, 
 -   **OpenAI API Key** (or a compatible API like OpenRouter, Gemini Proxy).
 -   **(Recommended)** S3-compatible object storage (AWS S3, MinIO, R2).
 -   **(Optional)** Google Cloud Project for Office file conversion.
+-   **FFmpeg + FFprobe** for video/audio conversion. Docker images include them automatically; Linux installs can use the system `ffmpeg`/`ffprobe` commands or custom paths via `.env`.
 
 ### Installation
 
@@ -59,6 +61,16 @@ Beyond conversion, it features a robust Markdown editor, a document summarizer, 
     # AI Provider (OpenAI Compatible)
     OPENAI_API_KEY=sk-...
     OPENAI_BASE_URL=https://api.openai.com/v1 # or your proxy URL
+
+    # Media conversion
+    MAX_FILE_SIZE=1024
+    MAX_UPLOAD_SIZE_MB=1024
+    FFMPEG_PATH=ffmpeg
+    FFPROBE_PATH=ffprobe
+    MEDIA_MAX_OUTPUT_SIZE_MB=100
+    MEDIA_TARGET_OUTPUT_SIZE_MB=95
+    MEDIA_MIN_AUDIO_BITRATE_KBPS=32
+    MEDIA_MAX_AUDIO_BITRATE_KBPS=320
 
     # Storage (S3) - Optional but recommended for production
     S3_ENDPOINT=https://s3.eu-central-1.amazonaws.com
@@ -90,6 +102,19 @@ Beyond conversion, it features a robust Markdown editor, a document summarizer, 
     npm run dev
     ```
     Access at `http://localhost:3000`.
+
+## 🎬 Media Conversion
+
+LevTolstoy accepts source media uploads up to **1GB**. Files sent to the AI provider are kept below the **100MB** audio limit:
+
+- Video files are processed server-side with FFmpeg; the first audio stream is extracted and rendered as MP3.
+- Audio formats other than native MP3/WAV/OGG are converted to MP3.
+- Native MP3 files under 100MB are used directly.
+- MP3 files over 100MB are re-rendered using the most suitable bitrate for a target size of 95MB.
+- The encoder never goes below `32kbps`; if a file cannot fit under 100MB at that bitrate, conversion fails with a clear error.
+- Upload progress shows percentage, transferred/total size, average speed, and ETA. Conversion progress shows the active phase, current file, FFmpeg percentage, bitrate, and supports cancellation.
+
+Docker deployments install FFmpeg/FFprobe inside the runtime image. Native Linux deployments use `ffmpeg` and `ffprobe` from `PATH` by default, or `FFMPEG_PATH` and `FFPROBE_PATH` from `.env`.
 
 ## 📦 Deployment
 
@@ -128,6 +153,7 @@ Default URL: `http://localhost:3000`. If you change `PORT` in `.env`, Compose us
 -   `docker-compose.yml` passes `.env` directly into the container with `env_file`.
 -   If S3 is not configured, temporary files are persisted in the `levtolstoy-cache` volume.
 -   Chromium and required fonts are installed in the runtime image for Markdown → PDF features.
+-   FFmpeg and FFprobe are installed in the runtime image for media conversion.
 -   For Google Drive OAuth in production, using the `GOOGLE_TOKEN` env variable is recommended. If file-based token persistence is required, uncomment the `./server/.google-token.json` volume line in `docker-compose.yml`.
 
 ### Docker CLI
@@ -160,6 +186,7 @@ Since the Google Refresh Token expires in 7 days for "Testing" projects:
 -   **Frontend:** HTML5, TailwindCSS (Vanilla JS)
 -   **AI Integration:** OpenAI SDK
 -   **Storage:** S3 (AWS SDK)
+-   **Media:** FFmpeg / FFprobe
 -   **Tools:** Marked.js, Highlight.js, KaTeX
 
 ## 📄 License

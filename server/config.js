@@ -1,9 +1,25 @@
 require('dotenv').config();
 
+const toNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 module.exports = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  maxFileSize: (process.env.MAX_FILE_SIZE || 50) * 1024 * 1024, // MB to bytes
+  maxFileSize: toNumber(process.env.MAX_FILE_SIZE, 1024) * 1024 * 1024, // MB to bytes
+
+  media: {
+    ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
+    ffprobePath: process.env.FFPROBE_PATH || 'ffprobe',
+    maxUploadSizeMb: toNumber(process.env.MAX_UPLOAD_SIZE_MB || process.env.MAX_FILE_SIZE, 1024),
+    maxOutputSizeMb: toNumber(process.env.MEDIA_MAX_OUTPUT_SIZE_MB, 100),
+    targetOutputSizeMb: toNumber(process.env.MEDIA_TARGET_OUTPUT_SIZE_MB, 95),
+    minAudioBitrateKbps: toNumber(process.env.MEDIA_MIN_AUDIO_BITRATE_KBPS, 32),
+    maxAudioBitrateKbps: toNumber(process.env.MEDIA_MAX_AUDIO_BITRATE_KBPS, 320),
+    outputSampleRate: toNumber(process.env.MEDIA_OUTPUT_SAMPLE_RATE, 44100),
+  },
 
   openai: {
     apiKey: process.env.OPENAI_API_KEY,

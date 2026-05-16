@@ -1,20 +1,23 @@
 const { spawn } = require('child_process');
-const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const config = require('../config');
 
-// Size constants
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB API limit
-const TARGET_FILE_SIZE = 95 * 1024 * 1024; // 95MB safe margin
+const MB = 1024 * 1024;
+const MAX_FILE_SIZE = config.media.maxOutputSizeMb * MB;
+const TARGET_FILE_SIZE = config.media.targetOutputSizeMb * MB;
+const MIN_AUDIO_BITRATE_KBPS = config.media.minAudioBitrateKbps;
+const MAX_AUDIO_BITRATE_KBPS = config.media.maxAudioBitrateKbps;
+const OUTPUT_SAMPLE_RATE = config.media.outputSampleRate;
 
-// Audio formats that need encoding to MP3
 const AUDIO_FORMATS_TO_ENCODE = {
     'audio/mp4': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3' },
     'audio/aac': { ext: '.aac', name: 'AAC', outputFormat: 'mp3' },
     'audio/aacp': { ext: '.aac', name: 'AAC+', outputFormat: 'mp3' },
     'audio/opus': { ext: '.opus', name: 'Opus', outputFormat: 'mp3' },
     'audio/flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3' },
-    'audio/ogg': { ext: '.ogg', name: 'OGG', outputFormat: 'mp3' },
+    'audio/oga': { ext: '.oga', name: 'OGA', outputFormat: 'mp3' },
     'audio/x-flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3' },
     'audio/x-aac': { ext: '.aac', name: 'AAC', outputFormat: 'mp3' },
     'audio/x-m4a': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3' },
@@ -22,8 +25,6 @@ const AUDIO_FORMATS_TO_ENCODE = {
     'audio/webm': { ext: '.weba', name: 'WebM Audio', outputFormat: 'mp3' }
 };
 
-// Video formats that need encoding to MP3 (extract audio)
-// All video formats are converted to MP3 audio for OpenAI compatible API
 const VIDEO_FORMATS_TO_ENCODE = {
     'video/mp4': { ext: '.mp4', name: 'MP4', outputFormat: 'mp3' },
     'video/x-matroska': { ext: '.mkv', name: 'MKV', outputFormat: 'mp3' },
@@ -38,282 +39,363 @@ const VIDEO_FORMATS_TO_ENCODE = {
     'video/mpeg': { ext: '.mpeg', name: 'MPEG', outputFormat: 'mp3' }
 };
 
-// All formats that need encoding (all output to MP3)
 const ALL_FORMATS_TO_ENCODE = {
     ...AUDIO_FORMATS_TO_ENCODE,
     ...VIDEO_FORMATS_TO_ENCODE
 };
 
-/**
- * Get FFmpeg executable path
- * @returns {string}
- */
 function getFFmpegPath() {
-    return process.env.FFMPEG_PATH || 'ffmpeg';
+    return config.media.ffmpegPath;
 }
 
-/**
- * Check if FFmpeg is available
- * @returns {Promise<boolean>}
- */
-async function isFFmpegAvailable() {
+function getFFprobePath() {
+    return config.media.ffprobePath;
+}
+
+async function commandAvailable(command, args) {
     return new Promise((resolve) => {
-        const ffmpeg = spawn(getFFmpegPath(), ['-version']);
-        ffmpeg.on('error', () => resolve(false));
-        ffmpeg.on('close', (code) => resolve(code === 0));
+        const child = spawn(command, args, { stdio: 'ignore' });
+        child.on('error', () => resolve(false));
+        child.on('close', (code) => resolve(code === 0));
     });
 }
 
-/**
- * Check if a MIME type needs encoding
- * @param {string} mimeType
- * @returns {boolean}
- */
+async function isFFmpegAvailable() {
+    return commandAvailable(getFFmpegPath(), ['-version']);
+}
+
+async function isFFprobeAvailable() {
+    return commandAvailable(getFFprobePath(), ['-version']);
+}
+
 function needsEncoding(mimeType) {
     return mimeType in ALL_FORMATS_TO_ENCODE;
 }
 
-/**
- * Check if a MIME type is an audio format needing encoding
- * @param {string} mimeType
- * @returns {boolean}
- */
 function isAudioFormat(mimeType) {
     return mimeType in AUDIO_FORMATS_TO_ENCODE;
 }
 
-/**
- * Check if a MIME type is a video format needing encoding
- * @param {string} mimeType
- * @returns {boolean}
- */
 function isVideoFormat(mimeType) {
     return mimeType in VIDEO_FORMATS_TO_ENCODE;
 }
 
-/**
- * Get format info for a MIME type
- * @param {string} mimeType
- * @returns {object|null}
- */
+function isMp3Mime(mimeType) {
+    return mimeType === 'audio/mpeg' || mimeType === 'audio/mp3';
+}
+
 function getFormatInfo(mimeType) {
     return ALL_FORMATS_TO_ENCODE[mimeType] || null;
 }
 
-/**
- * Calculate bitrate for target file size
- * @param {number} durationSeconds - Media duration in seconds
- * @param {number} targetSizeBytes - Target size in bytes
- * @param {string} type - 'audio' or 'video'
- * @returns {number} - Bitrate in kbps
- */
-function calculateBitrate(durationSeconds, targetSizeBytes, type = 'audio') {
-    // Leave some margin for container overhead (about 5%)
-    const adjustedSize = targetSizeBytes * 0.95;
-    // Calculate bitrate: (size in bits) / (duration in seconds) / 1000 = kbps
-    const bitrateKbps = Math.floor((adjustedSize * 8) / durationSeconds / 1000);
+function calculateBitrate(durationSeconds, targetSizeBytes = TARGET_FILE_SIZE) {
+    if (!durationSeconds || durationSeconds <= 0) {
+        throw new Error('Media duration must be greater than zero');
+    }
 
-    // Set reasonable limits based on type
-    if (type === 'audio') {
-        return Math.min(Math.max(bitrateKbps, 64), 320); // 64-320 kbps for audio
-    } else {
-        return Math.min(Math.max(bitrateKbps, 256), 8000); // 256-8000 kbps for video
+    const overheadSafeSize = targetSizeBytes * 0.94;
+    const bitrateKbps = Math.floor((overheadSafeSize * 8) / durationSeconds / 1000);
+    return Math.min(Math.max(bitrateKbps, MIN_AUDIO_BITRATE_KBPS), MAX_AUDIO_BITRATE_KBPS);
+}
+
+function estimateSizeBytes(durationSeconds, bitrateKbps) {
+    return Math.ceil((durationSeconds * bitrateKbps * 1000) / 8);
+}
+
+function ensureFitsAtMinimumBitrate(durationSeconds) {
+    const estimated = estimateSizeBytes(durationSeconds, MIN_AUDIO_BITRATE_KBPS);
+    if (estimated > TARGET_FILE_SIZE) {
+        throw new Error(
+            `Medya dosyası 32kbps minimum bitrate ile bile 100MB altına indirilemiyor. ` +
+            `Süre: ${Math.round(durationSeconds)} sn, tahmini çıktı: ${(estimated / MB).toFixed(1)}MB.`
+        );
     }
 }
 
-/**
- * Get media duration using ffprobe
- * @param {Buffer} buffer - Media buffer
- * @returns {Promise<number>} - Duration in seconds
- */
-function getMediaDuration(buffer) {
+function parseFfprobeJson(output) {
+    try {
+        const parsed = JSON.parse(output);
+        const duration = Number(parsed.format?.duration);
+        const hasAudio = Array.isArray(parsed.streams) && parsed.streams.some(stream => stream.codec_type === 'audio');
+        return { duration, hasAudio };
+    } catch {
+        return { duration: NaN, hasAudio: false };
+    }
+}
+
+function getMediaInfo(inputPath) {
     return new Promise((resolve, reject) => {
-        const ffprobe = spawn('ffprobe', [
-            '-i', 'pipe:0',
-            '-show_entries', 'format=duration',
+        const ffprobe = spawn(getFFprobePath(), [
             '-v', 'quiet',
-            '-of', 'csv=p=0'
+            '-print_format', 'json',
+            '-show_format',
+            '-show_streams',
+            inputPath
         ]);
 
         let output = '';
-        ffprobe.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        let stderr = '';
 
-        ffprobe.stderr.on('data', () => {}); // Ignore stderr
-
-        ffprobe.on('error', (err) => {
-            reject(new Error(`FFprobe error: ${err.message}`));
-        });
-
-        ffprobe.on('close', (code) => {
-            if (code === 0 && output.trim()) {
-                const duration = parseFloat(output.trim());
-                if (!isNaN(duration) && duration > 0) {
-                    resolve(duration);
-                } else {
-                    reject(new Error('Could not parse media duration'));
-                }
-            } else {
-                reject(new Error('FFprobe failed to get duration'));
+        ffprobe.stdout.on('data', data => { output += data.toString(); });
+        ffprobe.stderr.on('data', data => { stderr += data.toString(); });
+        ffprobe.on('error', err => reject(new Error(`FFprobe error: ${err.message}`)));
+        ffprobe.on('close', code => {
+            if (code !== 0) {
+                reject(new Error(`FFprobe exited with code ${code}: ${stderr}`));
+                return;
             }
-        });
 
-        // Write buffer to stdin
-        ffprobe.stdin.write(buffer);
-        ffprobe.stdin.end();
+            const info = parseFfprobeJson(output);
+            if (!info.hasAudio) {
+                reject(new Error('Bu medya dosyasında işlenebilir ses akışı bulunamadı.'));
+                return;
+            }
+            if (!Number.isFinite(info.duration) || info.duration <= 0) {
+                reject(new Error('Medya süresi okunamadı.'));
+                return;
+            }
+            resolve(info);
+        });
     });
 }
 
-/**
- * Encode media to target format
- * @param {Buffer} inputBuffer - Input media buffer
- * @param {string} mimeType - Input MIME type
- * @param {object} options - Encoding options
- * @param {function} [onProgress] - Progress callback (percent)
- * @returns {Promise<{buffer: Buffer, mimeType: string, size: number}>}
- */
-async function encodeMedia(inputBuffer, mimeType, options = {}, onProgress = null) {
-    const formatInfo = getFormatInfo(mimeType);
-    if (!formatInfo) {
-        throw new Error(`Unsupported media format: ${mimeType}`);
+function getMediaDuration(input) {
+    if (Buffer.isBuffer(input)) {
+        return withTempDir(async (dir) => {
+            const inputPath = path.join(dir, 'input.media');
+            await fs.promises.writeFile(inputPath, input);
+            const info = await getMediaInfo(inputPath);
+            return info.duration;
+        });
     }
+    return getMediaInfo(input).then(info => info.duration);
+}
 
-    // Check if FFmpeg is available
-    const ffmpegAvailable = await isFFmpegAvailable();
-    if (!ffmpegAvailable) {
-        throw new Error(
-            'FFmpeg is not available. Please install FFmpeg or set FFMPEG_PATH environment variable.'
-        );
-    }
-
-    // All formats are converted to MP3 audio for OpenAI compatible API
-    const outputFormat = 'mp3';
-    const outputMimeType = 'audio/mpeg';
-
-    // Get duration for bitrate calculation
-    let duration;
+async function withTempDir(fn) {
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'levtolstoy-media-'));
     try {
-        duration = await getMediaDuration(inputBuffer);
-    } catch (err) {
-        throw new Error(`Could not determine media duration: ${err.message}`);
+        return await fn(tempDir);
+    } finally {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+    }
+}
+
+function killProcess(child) {
+    if (!child || child.killed) return;
+
+    try {
+        if (child.pid) {
+            process.kill(-child.pid, 'SIGTERM');
+        } else {
+            child.kill('SIGTERM');
+        }
+    } catch {
+        try { child.kill('SIGTERM'); } catch { }
     }
 
-    // Calculate target bitrate for audio
-    const targetSize = options.targetSize || TARGET_FILE_SIZE;
-    const bitrate = calculateBitrate(duration, targetSize, 'audio');
+    setTimeout(() => {
+        if (!child.killed) {
+            try {
+                if (child.pid) process.kill(-child.pid, 'SIGKILL');
+                else child.kill('SIGKILL');
+            } catch { }
+        }
+    }, 5000).unref();
+}
 
-    // Build FFmpeg arguments - always output MP3 audio
-    const ffmpegArgs = [
-        '-i', 'pipe:0',
-        '-y', // Overwrite output
-        '-vn', // No video (extract audio only)
-        '-acodec', 'libmp3lame',
-        '-b:a', `${bitrate}k`,
-        '-ar', '44100', // Sample rate
-        '-ac', '2', // Stereo
-        '-f', 'mp3'
+function runFfmpeg(inputPath, outputPath, duration, bitrateKbps, options = {}) {
+    const { onProgress = null, signal = null, registerProcess = null } = options;
+    const args = [
+        '-hide_banner',
+        '-y',
+        '-i', inputPath,
+        '-vn',
+        '-map', '0:a:0',
+        '-codec:a', 'libmp3lame',
+        '-b:a', `${bitrateKbps}k`,
+        '-ar', String(OUTPUT_SAMPLE_RATE),
+        '-ac', bitrateKbps <= 48 ? '1' : '2',
+        '-f', 'mp3',
+        '-progress', 'pipe:2',
+        '-nostats',
+        outputPath
     ];
 
-    ffmpegArgs.push('pipe:1'); // Output to stdout
-
     return new Promise((resolve, reject) => {
-        const ffmpeg = spawn(getFFmpegPath(), ffmpegArgs);
-        const chunks = [];
+        const ffmpeg = spawn(getFFmpegPath(), args, { detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+        let stderr = '';
+        let settled = false;
 
-        // Handle progress from stderr
-        if (onProgress) {
-            let lastProgress = 0;
-            ffmpeg.stderr.on('data', (data) => {
-                const output = data.toString();
-                // Parse time from FFmpeg output
-                const timeMatch = output.match(/time=(\d+):(\d+):(\d+\.?\d*)/);
-                if (timeMatch) {
-                    const hours = parseInt(timeMatch[1]);
-                    const minutes = parseInt(timeMatch[2]);
-                    const seconds = parseFloat(timeMatch[3]);
-                    const currentTime = hours * 3600 + minutes * 60 + seconds;
-                    const progress = Math.min(100, Math.floor((currentTime / duration) * 100));
-                    if (progress !== lastProgress) {
-                        lastProgress = progress;
-                        onProgress(progress);
-                    }
-                }
-            });
+        if (registerProcess) registerProcess(ffmpeg);
+
+        const abortHandler = () => {
+            if (settled) return;
+            settled = true;
+            killProcess(ffmpeg);
+            reject(new Error('Dönüştürme işlemi iptal edildi.'));
+        };
+
+        if (signal?.aborted) {
+            abortHandler();
+            return;
         }
+        signal?.addEventListener('abort', abortHandler, { once: true });
 
-        ffmpeg.stdout.on('data', (data) => {
-            chunks.push(data);
+        ffmpeg.stderr.on('data', (data) => {
+            const text = data.toString();
+            stderr += text;
+
+            if (onProgress) {
+                const match = text.match(/out_time_ms=(\d+)/);
+                if (match) {
+                    const currentSeconds = Number(match[1]) / 1000000;
+                    const percent = Math.min(100, Math.max(0, Math.round((currentSeconds / duration) * 100)));
+                    onProgress({ percent, bitrateKbps });
+                }
+            }
         });
 
         ffmpeg.on('error', (err) => {
+            if (settled) return;
+            settled = true;
+            signal?.removeEventListener('abort', abortHandler);
             reject(new Error(`FFmpeg encoding error: ${err.message}`));
         });
 
         ffmpeg.on('close', (code) => {
+            if (settled) return;
+            settled = true;
+            signal?.removeEventListener('abort', abortHandler);
             if (code !== 0) {
-                reject(new Error(`FFmpeg exited with code ${code}`));
+                reject(new Error(`FFmpeg exited with code ${code}: ${stderr.split('\n').slice(-8).join(' ')}`));
                 return;
             }
-
-            const outputBuffer = Buffer.concat(chunks);
-            const outputSize = outputBuffer.length;
-
-            // Check final size
-            if (outputSize > MAX_FILE_SIZE) {
-                reject(new Error(
-                    `Encoded file (${(outputSize / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${MAX_FILE_SIZE / 1024 / 1024}MB). ` +
-                    `Try a smaller input file or lower quality settings.`
-                ));
-                return;
-            }
-
-            resolve({
-                buffer: outputBuffer,
-                mimeType: outputMimeType,
-                size: outputSize
-            });
+            if (onProgress) onProgress({ percent: 100, bitrateKbps });
+            resolve();
         });
-
-        // Write input to stdin
-        ffmpeg.stdin.write(inputBuffer);
-        ffmpeg.stdin.end();
     });
 }
 
-/**
- * Encode with size reduction if needed
- * Attempts multiple encoding passes to fit within 100MB limit
- * @param {Buffer} inputBuffer - Input media buffer
- * @param {string} mimeType - Input MIME type
- * @param {function} [onProgress] - Progress callback
- * @returns {Promise<{buffer: Buffer, mimeType: string, size: number}>}
- */
-async function encodeWithSizeReduction(inputBuffer, mimeType, onProgress = null) {
-    // First attempt with default target size
-    let result = await encodeMedia(inputBuffer, mimeType, { targetSize: TARGET_FILE_SIZE }, onProgress);
+async function ensureToolsAvailable() {
+    const [ffmpegAvailable, ffprobeAvailable] = await Promise.all([
+        isFFmpegAvailable(),
+        isFFprobeAvailable()
+    ]);
 
-    // If still too large, try with smaller target
-    if (result.size > MAX_FILE_SIZE) {
-        const reducedTarget = MAX_FILE_SIZE * 0.85; // More aggressive reduction
-        result = await encodeMedia(inputBuffer, mimeType, { targetSize: reducedTarget }, onProgress);
+    if (!ffmpegAvailable) {
+        throw new Error('FFmpeg bulunamadı. FFmpeg yükleyin veya FFMPEG_PATH ortam değişkenini ayarlayın.');
+    }
+    if (!ffprobeAvailable) {
+        throw new Error('FFprobe bulunamadı. FFmpeg paketinin ffprobe aracını yükleyin veya FFPROBE_PATH ortam değişkenini ayarlayın.');
+    }
+}
+
+async function encodePathToMp3(inputPath, inputMimeType, options = {}) {
+    await ensureToolsAvailable();
+
+    const inputStat = await fs.promises.stat(inputPath);
+    if (isMp3Mime(inputMimeType) && inputStat.size <= MAX_FILE_SIZE) {
+        return {
+            filePath: inputPath,
+            mimeType: 'audio/mpeg',
+            size: inputStat.size,
+            duration: null,
+            bitrateKbps: null,
+            converted: false
+        };
     }
 
-    return result;
+    const mediaInfo = await getMediaInfo(inputPath);
+    ensureFitsAtMinimumBitrate(mediaInfo.duration);
+
+    const targetSize = options.targetSize || TARGET_FILE_SIZE;
+    let bitrate = calculateBitrate(mediaInfo.duration, targetSize);
+    let lastOutputPath = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        const outputPath = path.join(options.tempDir || path.dirname(inputPath), `encoded-${Date.now()}-${attempt}.mp3`);
+        await runFfmpeg(inputPath, outputPath, mediaInfo.duration, bitrate, {
+            onProgress: (progress) => options.onProgress?.({
+                ...progress,
+                attempt,
+                duration: mediaInfo.duration,
+                stage: 'media-encoding'
+            }),
+            signal: options.signal,
+            registerProcess: options.registerProcess
+        });
+
+        const stat = await fs.promises.stat(outputPath);
+        if (lastOutputPath && lastOutputPath !== outputPath) {
+            await fs.promises.rm(lastOutputPath, { force: true });
+        }
+        lastOutputPath = outputPath;
+
+        if (stat.size <= MAX_FILE_SIZE) {
+            return {
+                filePath: outputPath,
+                mimeType: 'audio/mpeg',
+                size: stat.size,
+                duration: mediaInfo.duration,
+                bitrateKbps: bitrate,
+                converted: true
+            };
+        }
+
+        const ratio = TARGET_FILE_SIZE / stat.size;
+        bitrate = Math.max(MIN_AUDIO_BITRATE_KBPS, Math.floor(bitrate * ratio * 0.96));
+        if (bitrate <= MIN_AUDIO_BITRATE_KBPS && stat.size > MAX_FILE_SIZE) {
+            throw new Error(`MP3 çıktısı 32kbps minimum bitrate ile 100MB altına indirilemedi (${(stat.size / MB).toFixed(1)}MB).`);
+        }
+    }
+
+    throw new Error('MP3 çıktısı 100MB altına indirilemedi.');
+}
+
+async function encodeMedia(inputBuffer, mimeType, options = {}, onProgress = null) {
+    if (typeof options === 'function') {
+        onProgress = options;
+        options = {};
+    }
+    return withTempDir(async (dir) => {
+        const inputPath = path.join(dir, `input${getFormatInfo(mimeType)?.ext || '.media'}`);
+        await fs.promises.writeFile(inputPath, inputBuffer);
+        const result = await encodePathToMp3(inputPath, mimeType, { ...options, tempDir: dir, onProgress });
+        const buffer = await fs.promises.readFile(result.filePath);
+        return {
+            buffer,
+            mimeType: result.mimeType,
+            size: result.size,
+            duration: result.duration,
+            bitrateKbps: result.bitrateKbps,
+            converted: result.converted
+        };
+    });
+}
+
+async function encodeWithSizeReduction(inputBuffer, mimeType, onProgress = null) {
+    return encodeMedia(inputBuffer, mimeType, { targetSize: TARGET_FILE_SIZE }, onProgress);
 }
 
 module.exports = {
     isFFmpegAvailable,
+    isFFprobeAvailable,
     needsEncoding,
     isAudioFormat,
     isVideoFormat,
+    isMp3Mime,
     getFormatInfo,
     encodeMedia,
     encodeWithSizeReduction,
+    encodePathToMp3,
     getMediaDuration,
+    getMediaInfo,
     calculateBitrate,
+    killProcess,
     AUDIO_FORMATS_TO_ENCODE,
     VIDEO_FORMATS_TO_ENCODE,
     MAX_FILE_SIZE,
-    TARGET_FILE_SIZE
+    TARGET_FILE_SIZE,
+    MIN_AUDIO_BITRATE_KBPS,
+    MAX_AUDIO_BITRATE_KBPS
 };

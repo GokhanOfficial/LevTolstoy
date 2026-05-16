@@ -13,6 +13,8 @@ const SUPPORTED_FORMATS = {
         'audio/mpeg': { ext: '.mp3', name: 'MP3' },
         'audio/mp3': { ext: '.mp3', name: 'MP3' },
         'audio/wav': { ext: '.wav', name: 'WAV' },
+        'audio/x-wav': { ext: '.wav', name: 'WAV' },
+        'audio/ogg': { ext: '.ogg', name: 'OGG' },
 
         // Text
         'text/plain': { ext: '.txt', name: 'Text' }
@@ -55,7 +57,7 @@ const SUPPORTED_FORMATS = {
         'audio/aacp': { ext: '.aac', name: 'AAC+', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/opus': { ext: '.opus', name: 'Opus', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
-        'audio/ogg': { ext: '.ogg', name: 'OGG', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
+        'audio/oga': { ext: '.oga', name: 'OGA', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/x-flac': { ext: '.flac', name: 'FLAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/x-aac': { ext: '.aac', name: 'AAC', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
         'audio/x-m4a': { ext: '.m4a', name: 'M4A', outputFormat: 'mp3', outputMime: 'audio/mpeg' },
