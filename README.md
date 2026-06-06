@@ -14,7 +14,7 @@ Beyond conversion, it features a robust Markdown editor, a document summarizer, 
 
 ## ✨ Features
 
--   **🤖 AI-Powered Conversion:** Extracts text and complex layouts using state-of-the-art LLMs (default: `gpt-4o`).
+-   **🤖 AI-Powered Conversion:** Extracts text and complex layouts using state-of-the-art LLMs (default: `gemini-3.5-flash`).
 -   **📁 Multi-Format Support:**
     -   **Documents:** PDF, Text, Markdown
     -   **Office:** PPTX (PowerPoint), DOCX (Word), XLSX (Excel) _(Requires Google Drive API)_

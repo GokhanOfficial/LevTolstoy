@@ -14,7 +14,7 @@ Dönüştürme işlemine ek olarak, güçlü bir Markdown editörü, döküman �
 
 ## ✨ Özellikler
 
--   **🤖 Yapay Zeka Destekli Dönüşüm:** En son teknoloji LLM'leri kullanarak karmaşık düzenleri ve metinleri yüksek doğrulukla ayıklar (Varsayılan: `gpt-4o`).
+-   **🤖 Yapay Zeka Destekli Dönüşüm:** En son teknoloji LLM'leri kullanarak karmaşık düzenleri ve metinleri yüksek doğrulukla ayıklar (Varsayılan: `gemini-3.5-flash`).
 -   **📁 Çoklu Format Desteği:**
     -   **Dökümanlar:** PDF, Metin, Markdown
     -   **Office:** PPTX (PowerPoint), DOCX (Word), XLSX (Excel) _(Google Drive API gerektirir)_
