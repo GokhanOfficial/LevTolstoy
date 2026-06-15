@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-bookworm-slim AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Install dependencies first for better Docker layer caching.
@@ -12,47 +12,26 @@ WORKDIR /app
 COPY . .
 RUN npm run build
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:20-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production \
     PORT=3000
 
-# Puppeteer/md-to-pdf may need Chromium and fonts at runtime.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        chromium \
-        ca-certificates \
-        ffmpeg \
-        fonts-liberation \
-        fonts-noto \
-        fonts-noto-color-emoji \
-        libasound2 \
-        libatk-bridge2.0-0 \
-        libatk1.0-0 \
-        libcairo2 \
-        libcups2 \
-        libdbus-1-3 \
-        libdrm2 \
-        libgbm1 \
-        libglib2.0-0 \
-        libgtk-3-0 \
-        libnspr4 \
-        libnss3 \
-        libpango-1.0-0 \
-        libx11-6 \
-        libx11-xcb1 \
-        libxcb1 \
-        libxcomposite1 \
-        libxdamage1 \
-        libxext6 \
-        libxfixes3 \
-        libxrandr2 \
-        xdg-utils \
-    && rm -rf /var/lib/apt/lists/*
+# Install Chromium, FFmpeg and fonts for Alpine
+RUN apk add --no-cache \
+      chromium \
+      ffmpeg \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont \
+      font-noto-emoji
 
-# Use the system Chromium installed above instead of a bundled browser cache.
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Skip Puppeteer's Chrome download and use the Alpine Chromium
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 COPY package*.json ./
 RUN npm ci --omit=dev \
