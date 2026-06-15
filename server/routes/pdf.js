@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pdfService = require('../services/pdfService');
+const { generatePdf } = require('../v2/services/pdfEngine');
 const s3Service = require('../services/s3');
 const crypto = require('crypto');
 
@@ -18,8 +18,8 @@ router.post('/', async (req, res) => {
 
         console.log(`📄 PDF oluşturuluyor: ${filename}`);
 
-        // Generate PDF
-        const pdfBuffer = await pdfService.generatePdf(markdown);
+        // Generate PDF using headless-browser-free pdfmake engine
+        const pdfBuffer = await generatePdf(markdown, filename);
 
         // Ensure .pdf extension
         const pdfFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;

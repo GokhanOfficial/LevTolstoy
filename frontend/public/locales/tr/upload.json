@@ -1,0 +1,8 @@
+{
+  "dropZoneTitle": "Dosyaları sürükleyip bırakın",
+  "dropZoneDesc": "veya tıklayarak seçin",
+  "supportedFormats": "PDF, DOCX, PPTX, XLSX, resim, ses, video",
+  "filesSelected": "{{count}} dosya seçildi",
+  "removeFile": "Kaldır",
+  "fileSize": "{{size}} MB"
+}

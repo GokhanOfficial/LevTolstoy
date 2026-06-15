@@ -1,0 +1,16 @@
+{
+  "queueStatus": "Kuyruk: {{active}} aktif / {{queued}} bekleyen (max {{max}})",
+  "statusQueued": "Kuyrukta",
+  "statusProcessing": "İşleniyor",
+  "statusCompleted": "Tamamlandı",
+  "statusFailed": "Hata",
+  "statusCancelled": "İptal edildi",
+  "phaseLoading": "Yükleniyor",
+  "phasePreparing": "Hazırlanıyor",
+  "phaseMediaEncoding": "Medya kodlanıyor",
+  "phaseAiConversion": "AI dönüştürüyor",
+  "phaseAiSummarizing": "AI özetliyor",
+  "phaseRendering": "Render ediliyor",
+  "completedTasks": "Tamamlanan İşlemler",
+  "activeTasks": "Aktif İşlemler"
+}

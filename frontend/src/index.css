@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Core palette ─────────────────────────────── */
+  --color-background:         #020617;   /* slate-950 */
+  --color-foreground:         #f1f5f9;   /* slate-100 */
+  --color-card:               #0f172a;   /* slate-900 */
+  --color-card-foreground:    #f1f5f9;
+  --color-popover:            #0f172a;
+  --color-popover-foreground: #f1f5f9;
+  --color-muted:              #1e293b;   /* slate-800 */
+  --color-muted-foreground:   #64748b;   /* slate-500 */
+  --color-border:             #1e293b;   /* slate-800 */
+  --color-input:              #1e293b;
+  --color-ring:               #6366f1;
+
+  /* ── Brand ────────────────────────────────────── */
+  --color-primary:            #6366f1;   /* indigo-500 */
+  --color-primary-foreground: #ffffff;
+  --color-secondary:          #a855f7;   /* purple-500 */
+  --color-secondary-foreground: #ffffff;
+  --color-accent:             #3b82f6;   /* blue-500 */
+  --color-accent-foreground:  #ffffff;
+
+  /* ── Semantic ─────────────────────────────────── */
+  --color-destructive:        #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-success:            #10b981;
+  --color-warning:            #f59e0b;
+  --color-error:              #ef4444;
+  --color-info:               #3b82f6;
+
+  /* ── Typography ───────────────────────────────── */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ── Radius ───────────────────────────────────── */
+  --radius: 0.625rem;
+}
+
+/* ── Light theme ──────────────────────────────────── */
+html.light {
+  --color-background:         #ffffff;
+  --color-foreground:         #0f172a;
+  --color-card:               #f8fafc;
+  --color-card-foreground:    #0f172a;
+  --color-popover:            #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-muted:              #f1f5f9;
+  --color-muted-foreground:   #64748b;
+  --color-border:             #e2e8f0;
+  --color-input:              #e2e8f0;
+}
+
+/* ── Base styles ──────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* ── Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #334155; border-radius: 9999px; }
+html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* ── Prose overrides (PreviewDrawer markdown) ─────── */
+.prose {
+  --tw-prose-body:        #cbd5e1;
+  --tw-prose-headings:    #f1f5f9;
+  --tw-prose-lead:        #94a3b8;
+  --tw-prose-links:       #818cf8;
+  --tw-prose-bold:        #f1f5f9;
+  --tw-prose-counters:    #64748b;
+  --tw-prose-bullets:     #475569;
+  --tw-prose-hr:          #1e293b;
+  --tw-prose-quotes:      #94a3b8;
+  --tw-prose-quote-borders: #6366f1;
+  --tw-prose-captions:    #64748b;
+  --tw-prose-code:        #a5b4fc;
+  --tw-prose-pre-code:    #cbd5e1;
+  --tw-prose-pre-bg:      #0f172a;
+  --tw-prose-th-borders:  #334155;
+  --tw-prose-td-borders:  #1e293b;
+}

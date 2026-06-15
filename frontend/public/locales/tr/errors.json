@@ -1,0 +1,9 @@
+{
+  "generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
+  "network": "Ağ bağlantısı hatası.",
+  "uploadFailed": "Dosya yükleme başarısız.",
+  "taskFailed": "Görev işleme başarısız oldu.",
+  "cancelFailed": "Görev iptal edilemedi.",
+  "downloadFailed": "İndirme başarısız.",
+  "maxQueue": "Maksimum eşzamanlı görev sayısına ulaşıldı. Lütfen bekleyin."
+}

@@ -296,6 +296,7 @@ ${text}`;
 }
 
 module.exports = {
+    createClient,
     convertToMarkdown,
     convertMultipleToMarkdown,
     generateFilename,
