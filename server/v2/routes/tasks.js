@@ -90,7 +90,8 @@ router.get('/:id', (req, res) => {
     if (!task) {
       return res.status(404).json({ error: 'Task bulunamadı', errorKey: 'errors.taskNotFound' });
     }
-    res.json(taskQueue.sanitize(task));
+    // Include markdown content for preview/editor/copy functionality
+    res.json(taskQueue.sanitize(task, { includeMarkdown: true }));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -111,8 +112,12 @@ router.post('/:id/cancel', (req, res) => {
 });
 
 // GET /api/v2/tasks/:id/download
-router.get('/:id/download', (req, res) => {
+// Generates PDF/HTML on-demand from markdown if not pre-rendered
+router.get('/:id/download', async (req, res) => {
   try {
+    const { generatePdf } = require('../services/pdfEngine');
+    const { generateHtml } = require('../services/htmlRenderer');
+
     const task = taskQueue.get(req.params.id);
     if (!task) {
       return res.status(404).json({ error: 'Task bulunamadı', errorKey: 'errors.taskNotFound' });
@@ -122,33 +127,39 @@ router.get('/:id/download', (req, res) => {
       return res.status(400).json({ error: 'Task tamamlanmadı', errorKey: 'errors.taskNotCompleted' });
     }
 
-    const format = req.query.format || task.outputFormat;
+    const format = req.query.format || task.outputFormat || 'md';
     const filename = task.filename || 'document';
+    const markdown = task.markdown || '';
 
     if (format === 'pdf') {
+      // Generate PDF on-demand if not cached
       if (!task.pdfBuffer) {
-        return res.status(400).json({ error: 'PDF hazır değil', errorKey: 'errors.pdfNotReady' });
+        task.pdfBuffer = await generatePdf(markdown, filename);
       }
       const pdfName = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(pdfName)}`);
-      res.send(task.pdfBuffer);
-    } else if (format === 'html') {
+      return res.send(task.pdfBuffer);
+    }
+
+    if (format === 'html') {
+      // Generate HTML on-demand if not cached
       if (!task.htmlContent) {
-        return res.status(400).json({ error: 'HTML hazır değil', errorKey: 'errors.htmlNotReady' });
+        task.htmlContent = await generateHtml(markdown, filename);
       }
       const htmlName = filename.endsWith('.html') ? filename : `${filename}.html`;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(htmlName)}`);
-      res.send(task.htmlContent);
-    } else {
-      // markdown
-      const mdName = filename.endsWith('.md') ? filename : `${filename}.md`;
-      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(mdName)}`);
-      res.send(task.markdown || '');
+      return res.send(task.htmlContent);
     }
+
+    // Default: markdown
+    const mdName = filename.endsWith('.md') ? filename : `${filename}.md`;
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(mdName)}`);
+    res.send(markdown);
   } catch (error) {
+    console.error('Download error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

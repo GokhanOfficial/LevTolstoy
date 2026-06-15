@@ -60,7 +60,7 @@ class TaskQueue extends EventEmitter {
     };
   }
 
-  sanitize(task) {
+  sanitize(task, { includeMarkdown = false } = {}) {
     return {
       id: task.id,
       type: task.type,
@@ -76,6 +76,8 @@ class TaskQueue extends EventEmitter {
       startedAt: task.startedAt,
       completedAt: task.completedAt,
       error: task.error,
+      // Include markdown only when explicitly requested (single task fetch)
+      ...(includeMarkdown && { markdown: task.markdown || null }),
       files: task.files.map((f) => ({
         filename: f.filename,
         mimetype: f.mimetype,
