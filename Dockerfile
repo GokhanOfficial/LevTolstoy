@@ -18,20 +18,11 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000
 
-# Install Chromium, FFmpeg and fonts for Alpine
+# Install FFmpeg and fonts only (no Chromium needed anymore)
 RUN apk add --no-cache \
-      chromium \
       ffmpeg \
-      nss \
-      freetype \
-      harfbuzz \
       ca-certificates \
-      ttf-freefont \
-      font-noto-emoji
-
-# Skip Puppeteer's Chrome download and use the Alpine Chromium
-ENV PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+      ttf-freefont
 
 COPY package*.json ./
 RUN npm ci --omit=dev \
