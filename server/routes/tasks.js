@@ -240,7 +240,7 @@ async function downloadRemoteFile(file, task) {
 }
 
 async function buildFileInputs(task, files) {
-	const CACHE_DIR = path.join(__dirname, "../../public/cache");
+	const CACHE_DIR = path.join(__dirname, "../../temp/cache");
 	const fileInputs = [];
 
 	for (let i = 0; i < files.length; i++) {

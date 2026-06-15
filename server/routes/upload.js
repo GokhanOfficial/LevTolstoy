@@ -9,7 +9,7 @@ const mimeTypes = require('../utils/mimeTypes');
 const config = require('../config');
 
 // Cache directory (fallback when S3 is not configured)
-const CACHE_DIR = path.join(__dirname, '../../public/cache');
+const CACHE_DIR = path.join(__dirname, '../../temp/cache');
 const CACHE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_FILE_SIZE = config.media.maxUploadSizeMb * 1024 * 1024;
 
