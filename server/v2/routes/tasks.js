@@ -9,14 +9,35 @@ const taskQueue = new TaskQueue(processTask, { concurrency: 3 });
 // POST /api/v2/tasks
 router.post('/', async (req, res) => {
   try {
-    const { files, type, model, outputFormat, mergeMode } = req.body;
+    // Support both multer req.files (multipart) and req.body.content (raw text)
+    const files = req.files && req.files.length > 0 ? req.files : null;
+    const { type, model, outputFormat, mergeMode, content, filename: rawFilename } = req.body;
 
-    if (!files || files.length === 0) {
+    if (!files && !content) {
       return res.status(400).json({ error: 'Dosya listesi boş', errorKey: 'errors.noFile' });
     }
 
     if (!type || !['auto', 'convert', 'summarize'].includes(type)) {
       return res.status(400).json({ error: 'Geçersiz işlem tipi', errorKey: 'errors.invalidType' });
+    }
+
+    // Raw text content (paste from clipboard / MD-HTML text)
+    if (content && !files) {
+      const fname = rawFilename || 'paste.md';
+      const syntheticFile = {
+        originalname: fname,
+        mimetype: fname.endsWith('.html') ? 'text/html' : 'text/markdown',
+        buffer: Buffer.from(content, 'utf8'),
+      };
+      const task = createTask({
+        files: [syntheticFile],
+        type,
+        model,
+        outputFormat: outputFormat || 'markdown',
+        mergeMode: mergeMode || 'separate',
+      });
+      taskQueue.add(task);
+      return res.json({ success: true, tasks: [taskQueue.sanitize(task)] });
     }
 
     if (mergeMode === 'separate') {
@@ -27,7 +48,7 @@ router.post('/', async (req, res) => {
           files: [file],
           type,
           model,
-          outputFormat,
+          outputFormat: outputFormat || 'markdown',
           mergeMode: 'separate',
         });
         taskQueue.add(task);
@@ -36,10 +57,16 @@ router.post('/', async (req, res) => {
       return res.json({ success: true, tasks: createdTasks });
     }
 
-    const task = createTask({ files, type, model, outputFormat, mergeMode });
+    const task = createTask({
+      files,
+      type,
+      model,
+      outputFormat: outputFormat || 'markdown',
+      mergeMode: mergeMode || 'single',
+    });
     taskQueue.add(task);
 
-    res.json({ success: true, task: taskQueue.sanitize(task) });
+    res.json({ success: true, tasks: [taskQueue.sanitize(task)] });
   } catch (error) {
     console.error('Task creation error:', error.message);
     res.status(500).json({ error: error.message, errorKey: 'errors.taskStartFailed' });

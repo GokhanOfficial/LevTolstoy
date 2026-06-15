@@ -1,0 +1,17 @@
+{
+  "appName": "LevTolstoy",
+  "appDescription": "AI destekli döküman dönüştürücü",
+  "cancel": "İptal",
+  "retry": "Tekrar Dene",
+  "copy": "Kopyala",
+  "download": "İndir",
+  "preview": "Önizleme",
+  "delete": "Sil",
+  "close": "Kapat",
+  "save": "Kaydet",
+  "processing": "İşleniyor...",
+  "error": "Hata",
+  "success": "Başarılı",
+  "warning": "Uyarı",
+  "info": "Bilgi"
+}

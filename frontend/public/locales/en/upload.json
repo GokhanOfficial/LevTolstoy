@@ -1,0 +1,8 @@
+{
+  "dropZoneTitle": "Drop files here",
+  "dropZoneDesc": "or click to browse",
+  "supportedFormats": "PDF, DOCX, PPTX, XLSX, image, audio, video",
+  "filesSelected": "{{count}} files selected",
+  "removeFile": "Remove",
+  "fileSize": "{{size}} MB"
+}

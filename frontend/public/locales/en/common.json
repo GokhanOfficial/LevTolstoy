@@ -1,0 +1,17 @@
+{
+  "appName": "LevTolstoy",
+  "appDescription": "AI-powered document converter",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "copy": "Copy",
+  "download": "Download",
+  "preview": "Preview",
+  "delete": "Delete",
+  "close": "Close",
+  "save": "Save",
+  "processing": "Processing...",
+  "error": "Error",
+  "success": "Success",
+  "warning": "Warning",
+  "info": "Info"
+}
