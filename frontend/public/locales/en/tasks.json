@@ -1,0 +1,16 @@
+{
+  "queueStatus": "Queue: {{active}} active / {{queued}} queued (max {{max}})",
+  "statusQueued": "Queued",
+  "statusProcessing": "Processing",
+  "statusCompleted": "Completed",
+  "statusFailed": "Failed",
+  "statusCancelled": "Cancelled",
+  "phaseLoading": "Loading",
+  "phasePreparing": "Preparing",
+  "phaseMediaEncoding": "Encoding media",
+  "phaseAiConversion": "AI converting",
+  "phaseAiSummarizing": "AI summarizing",
+  "phaseRendering": "Rendering",
+  "completedTasks": "Completed Tasks",
+  "activeTasks": "Active Tasks"
+}

@@ -1,0 +1,37 @@
+# ── Git & CI ──────────────────────────────────────────────────
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# ── Secrets ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.google-token.json
+server/.google-token.json
+.security-key
+
+# ── Dev artifacts ─────────────────────────────────────────────
+node_modules
+npm-debug.log*
+*.log
+temp
+uploads
+public/cache
+
+# ── Frontend source (only dist is needed in runtime image) ────
+# The frontend-build stage copies frontend/ explicitly.
+# Exclude large directories from the root build context transfer
+# but they are still accessible via the COPY step in frontend-build.
+# We exclude plans/ and docs/ which are never needed in Docker.
+docs
+
+# ── Auto-Claude data ──────────────────────────────────────────
+.auto-claude
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees
+logs/security

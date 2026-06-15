@@ -1,0 +1,27 @@
+services:
+  levtolstoy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: levtolstoy:latest
+    container_name: levtolstoy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      # Temporary upload directory
+      - levtolstoy-temp:/app/temp
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  levtolstoy-temp:

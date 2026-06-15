@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment
+.env
+.env.local
+.google-token.json
+
+# Build outputs
+frontend/dist/
+
+# Temp/upload files
+temp/
+uploads/
+public/cache/
+
+# Logs
+*.log
+npm-debug.log*
+server.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Auto Claude data directory
+.auto-claude/
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+logs/security/

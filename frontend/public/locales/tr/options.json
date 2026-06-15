@@ -1,0 +1,18 @@
+{
+  "mode": "AI Modu",
+  "modeAuto": "Oto",
+  "modeAutoDesc": "AI karar versin",
+  "modeConvert": "Tam Dönüştürme",
+  "modeConvertDesc": "Sadece metne dönüştür",
+  "modeSummarize": "Özetle",
+  "modeSummarizeDesc": "İçeriği özetle",
+  "outputFormat": "Çıktı Formatı",
+  "formatPdf": "PDF",
+  "formatHtml": "HTML",
+  "formatMarkdown": "Markdown",
+  "mergeMode": "Birleştirme",
+  "mergeSingle": "Tek Dosya",
+  "mergeSeparate": "Her Dosya Ayrı",
+  "model": "AI Modeli",
+  "startButton": "AI ile İşlemi Başlat"
+}

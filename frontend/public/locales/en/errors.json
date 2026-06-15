@@ -1,0 +1,9 @@
+{
+  "generic": "An error occurred. Please try again.",
+  "network": "Network connection error.",
+  "uploadFailed": "File upload failed.",
+  "taskFailed": "Task processing failed.",
+  "cancelFailed": "Could not cancel task.",
+  "downloadFailed": "Download failed.",
+  "maxQueue": "Maximum concurrent task limit reached. Please wait."
+}

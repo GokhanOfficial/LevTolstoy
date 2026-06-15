@@ -1,0 +1,18 @@
+{
+  "mode": "AI Mode",
+  "modeAuto": "Auto",
+  "modeAutoDesc": "Let AI decide",
+  "modeConvert": "Full Convert",
+  "modeConvertDesc": "Convert only to text",
+  "modeSummarize": "Summarize",
+  "modeSummarizeDesc": "Summarize content",
+  "outputFormat": "Output Format",
+  "formatPdf": "PDF",
+  "formatHtml": "HTML",
+  "formatMarkdown": "Markdown",
+  "mergeMode": "Merge Mode",
+  "mergeSingle": "Single File",
+  "mergeSeparate": "Separate Files",
+  "model": "AI Model",
+  "startButton": "Start with AI"
+}
