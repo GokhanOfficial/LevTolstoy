@@ -31,11 +31,17 @@
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
     "highlight.js": "^11.11.1",
+    "html-to-pdfmake": "^2.5.33",
+    "jsdom": "^29.1.1",
     "katex": "^0.16.27",
+    "marked": "^18.0.5",
     "md-to-pdf": "^5.2.5",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.77.0",
-    "pdf-lib": "^1.17.1"
+    "p-queue": "^9.3.0",
+    "pdf-lib": "^1.17.1",
+    "pdfmake": "^0.2.18",
+    "sharp": "^0.35.1"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.19"

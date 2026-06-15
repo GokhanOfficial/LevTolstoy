@@ -12,6 +12,7 @@ const uploadRoutes = require('./routes/upload');
 const tasksRoutes = require('./routes/tasks');
 const summarizeRoutes = require('./routes/summarize');
 const filesRoutes = require('./routes/files');
+const { router: v2TasksRouter } = require('./v2/routes/tasks');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/convert', tasksRoutes);
 app.use('/api/summarize', summarizeRoutes);
 app.use('/api/files', filesRoutes);
+app.use('/api/v2/tasks', v2TasksRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
